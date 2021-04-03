@@ -1,0 +1,5 @@
+1) Converting our file into a linked list (no punctuation, all lowercase, keep track of number of words)
+2) Figure out the computations
+3) Figure out how to compare multiple files
+4) Recurse through the directory/directories and put the files we need into the file thread
+5) Figure out how to use the optional arguments
