@@ -3,3 +3,41 @@
 3) Figure out how to compare multiple files
 4) Recurse through the directory/directories and put the files we need into the file thread
 5) Figure out how to use the optional arguments
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+Directory
+- logic for initially populating files/directories queue from arguments
+- split work between threads
+- traverse the directories in their own method
+  - Example: directory_traverse
+    - look through each file
+    - add files to file queue
+    - if there are more directories, add path to directories queue
+
+File
+- logic for getting WFD for each file
+  - open file
+  - get each word (go thrrough char by char) [ignore non-alphachars]
+  - after getting the words, make them lowercase
+  - see if your list has the word in it so add
+    - if word is already in list increment count
+    - if word is not present add to list in alphabetically order
+    - add to overall word count
+    - go back and loop through to calculate frequencies of each word
+    
+    struct word_LL{ // this is a linked list that holds the words in the files and their frequencies
+      char* word;
+      int count;
+      int freq:
+      struct word_LL next;
+    }
+    struct fileWFD{ // this is a linked list that holds the name, word list, and their total for the WFD of the file
+      char* path;
+      struct word_LL;
+      int totalwords;
+    }
+    for(int x = 0; x x < totalfiles; x++){ // this is for getting the pairs for the files
+      for(int y = (x+1); y < totalfiles; y++){
+      }
+    }
