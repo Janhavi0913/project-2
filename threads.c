@@ -29,41 +29,68 @@ wordnode* createNode(char* word)
 
 wordnode* insert(wordnode* head, char* word)
 {
-	printf("In insert: the word we're inputting is %s\t", word);
 	if(head == NULL)
 	{
 		wordnode* thenode  = createNode(word);
 		head = thenode;
 		head->totalnodes+=1;
-		printf("Head1: %s\n", head->word);
 		return head;
+	}
+	else if(head->next == NULL)
+	{
+		if(strcmp(head->word, word) > 0)
+		{
+			wordnode* thenode = createNode(word);
+			thenode->next = head;
+			thenode->totalnodes += head->totalnodes;
+			return thenode;
+		}
+		else if(strcmp(head->word, word) == 0)
+		{
+			head->numoccur += 1;
+			head->totalnodes += 1;
+			return head;
+		}
+		else
+		{
+			wordnode* thenode = createNode(word);
+			head->next = thenode;
+			head->totalnodes += 1;
+			return head;
+		}
 	}
 	else
 	{
 		wordnode* ptr;
 		ptr = head;
-		printf("Head: %s\n", head->word);
 		while(ptr->next != NULL)
 		{
 			if(strcmp(ptr->word, word) == 0)
 			{
-				printf("Current word: %s and word in list: %s\n", word, ptr->word);
+				printf("Enter here for: %s\n", word);
 				ptr->numoccur += 1;
-				printf("Word occured more than once: %s\n", head->word);
+				head->totalnodes += 1;
 				return head;
 			}
-			else if((strcmp(ptr->word, word) > 0 && strcmp(ptr->next->word, word) < 0) || (strcmp(ptr->word, word) > 0 && ptr->next == NULL))
+			else if((strcmp(ptr->word, word) < 0 && strcmp(ptr->next->word, word) > 0) || (strcmp(ptr->word, word) < 0 && ptr->next == NULL))
 			{
-				printf("Pointer is %s and the word is %s", ptr->word, word);
 				break;
 			}
-			else if(strcmp(ptr->word, word) < 0)
+			else if(strcmp(ptr->word, word) > 0)
 			{
-				printf("Pointer is %s and the word is %s", ptr->word, word);
 				wordnode* thenode = createNode(word);
-				thenode->next = head;
-				thenode->totalnodes += head->totalnodes;
-				return thenode;
+				if(ptr == head)
+				{
+					thenode->next = head;
+					thenode->totalnodes += head->totalnodes;
+					return thenode;
+				}
+				else
+				{
+					thenode->next = ptr;
+					head->totalnodes += 1;
+					return head;
+				}
 			}
 			ptr = ptr->next;
 		}
@@ -75,24 +102,6 @@ wordnode* insert(wordnode* head, char* word)
 		return head;
 	}
 }
-
-/*wordnode* sortLexicographically()
-{
-	int i;
-	int j;
-	for(i=0;i<head->totalnodes - 1;i++)
-	{
-		for(j=i+1;j<10;j++)
-		{
-			if(strcmp(str[i],str[j])>0)
-			{
-				strcpy(temp,str[i]);
-				strcpy(str[i],str[j]);
-				strcpy(str[j],temp);
-			}
-		}
-	}
-}*/
 
 void freeNodes(wordnode* head)
 {
@@ -137,6 +146,31 @@ wordnode* createLinkedList(wordnode* head, int fd)
 	return head;
 }
 
+double totalcomputation(wordnode* file1, wordnode* file2, wordnode* file)
+{
+	double KLD1 = 0, KLD2 = 0, JSD = 0;
+	wordnode* ptr = file;
+	while(ptr != NULL)
+	{
+		while(strcmp(file1->word, ptr->word) != 0)
+			ptr = ptr->next;
+		KLD1 += (file1->numoccur*log2((file1->numoccur)/(ptr->numoccur)));
+		ptr = ptr->next;
+		file1 = file1->next;
+	}
+	wordnode* ptr2 = file;
+	while(ptr2 != NULL)
+	{
+		while(strcmp(file2->word, ptr2->word) != 0)
+			ptr2 = ptr2->next;
+		KLD2 += (file2->numoccur*log2((file2->numoccur)/(ptr2->numoccur)));
+		ptr2 = ptr2->next;
+		file2 = file2->next;
+	}
+	JSD = sqrt((0.5*KLD1)+(0.5*KLD2));
+	return JSD;
+}
+
 void printLinkedlist(wordnode* head)
 {
 	wordnode* ptr = head;
@@ -165,4 +199,6 @@ int main(int argc, char **argv)
     printf("Words in lexicographic order:\n");
     printLinkedlist(start);
     printf("Number of words in file: %d\n", start->totalnodes);
+	close(fd);
+	return EXIT_SUCCESS;
 }
