@@ -41,3 +41,8 @@ File
       for(int y = (x+1); y < totalfiles; y++){
       }
     }
+
+
+- Include the filename in the linked list
+- Put WFD in the createLinked List
+- createLinkedList into main
