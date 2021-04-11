@@ -67,7 +67,6 @@ wordnode* insert(wordnode* head, char* word)
 		{
 			if(strcmp(ptr->word, word) == 0)
 			{
-				printf("Enter here for: %s\n", word);
 				ptr->numoccur += 1;
 				head->totalnodes += 1;
 				return head;
@@ -111,38 +110,44 @@ void freeNodes(wordnode* head)
     free(head);
 }
 
-wordnode* createLinkedList(wordnode* head, int fd)
+strbuf_t readFile(int fd)
 {
 	char *a = malloc(sizeof(char));
 	int rval = read(fd, a, sizeof(char));
 	char curr;
-	strbuf_t word;
-	sb_init(&word, 5);
-	int i;
+	strbuf_t file;
+	sb_init(&file, 5);
 	while(rval == 1)
 	{
-		while(isspace(a[0]) == 0 && rval == 1)
+		if(ispunct(a[0]) == 0 || a[0] == '-' || isspace(a[0]) == 0 || a[0] == ' ')
 		{
 			curr = tolower(a[0]);
-			if(ispunct(curr) == 0 || curr == '-')
-			{
-            	sb_append(&word, curr);
-            }
-            rval = read(fd, a, sizeof(char));
-        }
-        printf("Word before insert: %s\n", word.data);
-        if(head != NULL)
-        	printf("Head before insert: %s\n", head->word);
-        head = insert(head, word.data);
-        printf("Head after insert: %s\n", head->word);
-        for(i = 0; i < word.length; i ++)
-        	remove(word.data);
-        printf("Head after insert: %s\n", head->word);
-		while(isspace(a[0]) != 0 && rval == 1)
-		{
-			rval = read(fd, a, sizeof(char));
+			sb_append(&file, curr);
 		}
+		rval = read(fd, a, sizeof(char));
 	}
+	close(fd);
+	return file;
+}
+
+wordnode* createLinkedList(wordnode* head, int fd)
+{
+	strbuf_t file = readFile(fd);
+	int i = 0;
+	char delim[2] = " ";
+	char* str;
+	str = strtok(file.data, delim);
+	head = insert(head, str);
+	i += strlen(str);
+	while(i < file.length)
+	{
+		str = strtok(NULL, delim);
+		if(str == NULL)
+			break;
+		head = insert(head, str);
+		i += strlen(str);
+	}
+	//sb_destroy(&file);
 	return head;
 }
 
@@ -174,19 +179,18 @@ double totalcomputation(wordnode* file1, wordnode* file2, wordnode* file)
 void printLinkedlist(wordnode* head)
 {
 	wordnode* ptr = head;
-	printf("Head at the end: %s\n", ptr->word);
     while(ptr != NULL)
     {
-        printf("%s\n", ptr->word);
+        printf("%s: %f\n", ptr->word, ptr->numoccur);
         ptr = ptr->next;
     }
-    printf("\n");
 }
 
 int main(int argc, char **argv)
 {
     if(argc < 2)
-    { // too many arguments or too little arguments
+    { 
+	// too many arguments or too little arguments
     	printf("Number of argument error\n");
     	return EXIT_FAILURE;
     }
@@ -199,6 +203,5 @@ int main(int argc, char **argv)
     printf("Words in lexicographic order:\n");
     printLinkedlist(start);
     printf("Number of words in file: %d\n", start->totalnodes);
-	close(fd);
 	return EXIT_SUCCESS;
 }
