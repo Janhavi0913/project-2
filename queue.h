@@ -1,13 +1,21 @@
-typedef struct Queue{
-    int front, rear, size;
-    char **pathname;
+typedef struct Qentry {
+    char* pathname;
+    struct Qentry* next;
+}Qentry;
+  
+typedef struct Queue {
+    struct Qentry *front;
+    struct Qentry *rear;
+    int size;
+    int open;
     pthread_mutex_t lock;
-    pthread_cond_t read_ready;  // wait for count > 0
-    pthread_cond_t write_ready; // wait for count < QUEUESIZE
-} Queue;
+    pthread_cond_t read_ready;
+    pthread_cond_t write_ready;
+}Queue;
 
-void queue_init(struct Queue *Q);
-void enqueue(struct Queue* Q, char *pathname);
-char* dequeue(struct Queue* Q);
-int isEmpty(struct Queue *Q);
+struct Qentry* create_entry(char* name);
+struct Queue* createQueue();
+void enqueue(struct Queue* q, char* name);
+char* dequeue(struct Queue* q);
+int isEmpty(struct Queue* q);
 

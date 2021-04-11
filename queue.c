@@ -1,62 +1,89 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <limits.h>
+#include <string.h>
 #include <pthread.h>
+#include <limits.h>
 #include "queue.h"
+
 
 #ifndef DEBUG
 #define DEBUG 0
 #endif
-
-void queue_init(struct Queue *Q){
-    Q = (struct Queue*)malloc(sizeof(struct Queue));
-    Q->front = 0;
-    Q->size = 0;
-    Q->rear = Q->size - 1;
-    char **pathname;
-    pthread_mutex_init(&Q->lock, NULL);
-    pthread_cond_init(&Q->read_ready, NULL);
-    pthread_cond_init(&Q->write_ready, NULL);    
-    //return err;  // obtained from the init functions (code omitted)
+    
+struct Queue* createQueue(){
+    struct Queue* q = (struct Queue*)malloc(sizeof(struct Queue));
+    q->front = NULL;
+    q->rear = NULL;
+    q->size = 0;
+    q->open = 1;
+    pthread_mutex_init(&q->lock, NULL);
+    pthread_cond_init(&q->read_ready, NULL);
+    pthread_cond_init(&q->write_ready, NULL);  
+    return q;
 }
 
-void enqueue(struct Queue *Q, char *name){
-    pthread_mutex_lock(&Q->lock); // make sure no one else touches Q until we're done
-    /* while (Q->size == QUEUESIZE) {  
-        pthread_cond_wait(&Q->write_ready, &Q->lock); // wait for another thread to dequeue
-            // release lock & wait for a thread to signal write_ready
-    } */
-    // at this point, we hold the lock & Q->count < QUEUESIZE
-    unsigned index = Q->front + Q->size;
-    /* if (index >= QUEUESIZE) 
-        index -= QUEUESIZE; */
-    Q->pathname[index] = (char*)malloc((sizeof(name + 1))* sizeof(char));
-    Q->size++; 
-    pthread_mutex_unlock(&Q->lock); // now we're done
-    pthread_cond_signal(&Q->read_ready); // wake up a thread waiting to read (if any)
+struct Qentry* create_entry(char* name){
+    struct Qentry* temp = (struct Qentry*)malloc(sizeof(struct Qentry));
+    int length = strlen(name);
+    temp->pathname = (char*) malloc(length * sizeof(char));
+    strcpy(temp->pathname, name);
+    temp->next = NULL;
+    return temp;
+} 
 
-    //return 0;
-}
-
-char* dequeue(struct Queue *Q){
-    pthread_mutex_lock(&Q->lock);
-    while (Q->size == 0) {
-        pthread_cond_wait(&Q->read_ready, &Q->lock);
+int isEmpty(struct Queue* q){
+    if(q->size == 0){
+        return 0;
     }
-        // now we have exclusive access and queue is non-empty
-    char *pathname = Q->pathname[Q->front];  // write value at head to pointer
-    Q->size--;
-    Q->front ++;
-    /* if (Q->front == QUEUESIZE) 
-        Q->front = 0; */
-    pthread_mutex_unlock(&Q->lock);
-    pthread_cond_signal(&Q->write_ready);
+return 1;        
+}
+
+void enqueue(struct Queue* q, char* name){
+    pthread_mutex_lock(&q->lock);
+    if(q->open == 0){
+        pthread_mutex_unlock(&q->lock);
+    }
+    struct Qentry* add = create_entry(name);
+    if (q->front == NULL) {
+        q->front = add;
+        q->rear = q->front;
+        q->size++;
+        return;
+    }
+    q->rear->next = add;
+    q->rear = add;
+    q->size++;
+    pthread_mutex_unlock(&q->lock); // now we're done
+    return;
+}
+  
+char* dequeue(struct Queue* q){
+    pthread_mutex_lock(&q->lock);
+    while ((q->open == 1) && (q->size == 0)) {
+        pthread_cond_wait(&q->read_ready, &q->lock);
+    }
+    if(q->open == 0){
+        pthread_mutex_unlock(&q->lock);
+    }
+    struct Qentry* pop = q->front;
+    q->front = q->front->next;
+    q->size--;
+    
+    if (q->front == NULL)// If front becomes NULL, then change rear also as NULL
+        q->rear = NULL;
+
+    int length = strlen(pop->pathname);
+    char* pathname = (char*) malloc(length * sizeof(char));
+    strcpy(pathname, pop->pathname);
+    free(pop->pathname);
+    free(pop);
+    /* pthread_mutex_unlock(&q->lock); // now we're done
+    pthread_cond_signal(&q->read_ready); // wake up a thread waiting to read (if any) */
     return pathname;
 }
 
-int isEmpty(struct Queue *Q){
-    if(Q->size == 0){
-        return 0;
-    }
-return 1;
+int close_queue(struct Queue* q){
+    pthread_mutex_lock(&q->lock);
+    q->open = 0;
+    pthread_mutex_unlock(&q->lock);
 }
