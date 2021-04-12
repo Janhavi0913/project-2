@@ -12,7 +12,8 @@
 typedef struct wordnode
 {
 	char* word;
-	int numoccur;
+	char* filename;
+	double numoccur;
 	int totalnodes;
 	struct wordnode* next;
 } wordnode;
@@ -21,19 +22,20 @@ wordnode* createNode(char* word)
 {
         struct wordnode* newnode = (struct wordnode*)malloc(sizeof(struct wordnode));
         newnode->word = word;
+	newnode->filename = NULL;
         newnode->numoccur = 1;
         newnode->totalnodes = 1;
         newnode->next = NULL;
         return newnode;
 }
 
-wordnode* insert(wordnode* head, char* word)
+wordnode* insert(wordnode* head, char* word, char* filename)
 {
 	if(head == NULL)
 	{
 		wordnode* thenode  = createNode(word);
 		head = thenode;
-		head->totalnodes+=1;
+		head->filename = filename;
 		return head;
 	}
 	else if(head->next == NULL)
@@ -43,6 +45,8 @@ wordnode* insert(wordnode* head, char* word)
 			wordnode* thenode = createNode(word);
 			thenode->next = head;
 			thenode->totalnodes += head->totalnodes;
+			thenode->filename = filename;
+			head->filename = NULL;
 			return thenode;
 		}
 		else if(strcmp(head->word, word) == 0)
@@ -63,7 +67,7 @@ wordnode* insert(wordnode* head, char* word)
 	{
 		wordnode* ptr;
 		ptr = head;
-		while(ptr->next != NULL)
+		while(ptr != NULL)
 		{
 			if(strcmp(ptr->word, word) == 0)
 			{
@@ -71,17 +75,24 @@ wordnode* insert(wordnode* head, char* word)
 				head->totalnodes += 1;
 				return head;
 			}
-			else if((strcmp(ptr->word, word) < 0 && strcmp(ptr->next->word, word) > 0) || (strcmp(ptr->word, word) < 0 && ptr->next == NULL))
+			else if(strcmp(ptr->word, word) < 0)
 			{
-				break;
+				if(ptr->next == NULL)
+					break;
+				else if(strcmp(ptr->next->word, word) > 0)
+					break;
+				else
+					ptr = ptr->next;
 			}
-			else if(strcmp(ptr->word, word) > 0)
+			else
 			{
 				wordnode* thenode = createNode(word);
 				if(ptr == head)
 				{
 					thenode->next = head;
 					thenode->totalnodes += head->totalnodes;
+					thenode->filename = filename;
+					head->filename = NULL;
 					return thenode;
 				}
 				else
@@ -91,7 +102,6 @@ wordnode* insert(wordnode* head, char* word)
 					return head;
 				}
 			}
-			ptr = ptr->next;
 		}
 		wordnode* thenode = createNode(word);
 		if(ptr->next != NULL)
@@ -100,14 +110,6 @@ wordnode* insert(wordnode* head, char* word)
 		head->totalnodes+=1;
 		return head;
 	}
-}
-
-void freeNodes(wordnode* head)
-{
-    if(head != NULL)
-        return;
-    freeNodes(head->next);
-    free(head);
 }
 
 strbuf_t readFile(int fd)
@@ -122,58 +124,13 @@ strbuf_t readFile(int fd)
 		if(ispunct(a[0]) == 0 || a[0] == '-' || isspace(a[0]) == 0 || a[0] == ' ')
 		{
 			curr = tolower(a[0]);
-			sb_append(&file, curr);
+			if(curr != '\n')
+				sb_append(&file, curr);
 		}
 		rval = read(fd, a, sizeof(char));
 	}
 	close(fd);
 	return file;
-}
-
-wordnode* createLinkedList(wordnode* head, int fd)
-{
-	strbuf_t file = readFile(fd);
-	int i = 0;
-	char delim[2] = " ";
-	char* str;
-	str = strtok(file.data, delim);
-	head = insert(head, str);
-	i += strlen(str);
-	while(i < file.length)
-	{
-		str = strtok(NULL, delim);
-		if(str == NULL)
-			break;
-		head = insert(head, str);
-		i += strlen(str);
-	}
-	//sb_destroy(&file);
-	return head;
-}
-
-double totalcomputation(wordnode* file1, wordnode* file2, wordnode* file)
-{
-	double KLD1 = 0, KLD2 = 0, JSD = 0;
-	wordnode* ptr = file;
-	while(ptr != NULL)
-	{
-		while(strcmp(file1->word, ptr->word) != 0)
-			ptr = ptr->next;
-		KLD1 += (file1->numoccur*log2((file1->numoccur)/(ptr->numoccur)));
-		ptr = ptr->next;
-		file1 = file1->next;
-	}
-	wordnode* ptr2 = file;
-	while(ptr2 != NULL)
-	{
-		while(strcmp(file2->word, ptr2->word) != 0)
-			ptr2 = ptr2->next;
-		KLD2 += (file2->numoccur*log2((file2->numoccur)/(ptr2->numoccur)));
-		ptr2 = ptr2->next;
-		file2 = file2->next;
-	}
-	JSD = sqrt((0.5*KLD1)+(0.5*KLD2));
-	return JSD;
 }
 
 void printLinkedlist(wordnode* head)
@@ -186,22 +143,47 @@ void printLinkedlist(wordnode* head)
     }
 }
 
+void freeNodes(wordnode* head)
+{
+    if(head != NULL)
+        return;
+    freeNodes(head->next);
+    free(head);
+}
+
 int main(int argc, char **argv)
 {
-    if(argc < 2)
-    { 
-	// too many arguments or too little arguments
-    	printf("Number of argument error\n");
-    	return EXIT_FAILURE;
-    }
-    char* f1 = argv[1];
-    int fd = open(f1, O_RDONLY);
-    if(fd == -1)
-    	perror(argv[2]);
-    wordnode* start;
-    start = createLinkedList(NULL, fd);
-    printf("Words in lexicographic order:\n");
-    printLinkedlist(start);
-    printf("Number of words in file: %d\n", start->totalnodes);
+	if(argc < 2)
+	{ 
+		// too little arguments
+		printf("Number of argument error\n");
+		return EXIT_FAILURE;
+	}
+	char* f1 = argv[1];
+    	int fd = open(f1, O_RDONLY);
+    	if(fd == -1)
+    		perror(argv[2]);
+	strbuf_t file = readFile(fd);
+	int i = 0;
+	char delim[2] = " ";
+	char* str = strtok(file.data, delim);
+	wordnode* head = insert(NULL, str, f1);
+	i += strlen(str);
+	while(i < file.length)
+	{
+		str = strtok(NULL, delim);
+		if(str == NULL)
+			break;
+		head = insert(head, str, f1);
+		i += strlen(str);
+	}
+	sb_destroy(&file);
+	wordnode* ptr = head;
+	while(ptr != NULL)
+	{
+		ptr->numoccur = ptr->numoccur/head->totalnodes;
+		ptr = ptr->next;
+	}
+	freeNodes(head);
 	return EXIT_SUCCESS;
 }
