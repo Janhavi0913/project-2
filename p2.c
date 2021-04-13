@@ -15,7 +15,7 @@ struct variables{
     char* suffix;
     struct Queue* filequ;
     struct Queue* dirqu;
-    struct wordnode* filelist;
+    struct filenode* filelist;
     int active;
 }variables;
 
