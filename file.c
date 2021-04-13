@@ -9,21 +9,28 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+//1. create combined file 2. do computation 3. destroy combined file 4. return computation
 typedef struct wordnode
 {
 	char* word;
-	char* filename;
 	int numoccur;
 	int totalnodes;
 	double WFD;
 	struct wordnode* next;
 } wordnode;
 
+typedef struct filenode
+{
+	char* filename;
+	wordnode* head;
+	int totalnodes;
+	struct filenode* next;
+}
+
 wordnode* createNode(char* word)
 {
         struct wordnode* newnode = (struct wordnode*)malloc(sizeof(struct wordnode));
         newnode->word = word;
-	newnode->filename = NULL;
         newnode->numoccur = 1;
         newnode->totalnodes = 1;
 	newnode->WFD = 0;
@@ -31,13 +38,21 @@ wordnode* createNode(char* word)
         return newnode;
 }
 
-wordnode* insert(wordnode* head, char* word, char* filename)
+filenode* createFileNode(char* filename, wordnode* head, int totalnodes)
+{
+	struct filenode* thenode = (struct filenode*)malloc(sizeof(struct filenode));
+	thenode->filename = filename;
+	thenode->head = head;
+	thenode->totalnodes = totalnodes;
+	return thenode;
+}
+
+wordnode* insert(wordnode* head, char* word)
 {
 	if(head == NULL)
 	{
 		wordnode* thenode  = createNode(word);
 		head = thenode;
-		head->filename = filename;
 		return head;
 	}
 	else if(head->next == NULL)
@@ -47,8 +62,6 @@ wordnode* insert(wordnode* head, char* word, char* filename)
 			wordnode* thenode = createNode(word);
 			thenode->next = head;
 			thenode->totalnodes += head->totalnodes;
-			thenode->filename = filename;
-			head->filename = NULL;
 			return thenode;
 		}
 		else if(strcmp(head->word, word) == 0)
@@ -93,8 +106,6 @@ wordnode* insert(wordnode* head, char* word, char* filename)
 				{
 					thenode->next = head;
 					thenode->totalnodes += head->totalnodes;
-					thenode->filename = filename;
-					head->filename = NULL;
 					return thenode;
 				}
 				else
@@ -169,14 +180,14 @@ int main(int argc, char **argv)
 	int i = 0;
 	char delim[2] = " ";
 	char* str = strtok(file.data, delim);
-	wordnode* head = insert(NULL, str, f1);
+	wordnode* head = insert(NULL, str);
 	i += strlen(str);
 	while(i < file.length)
 	{
 		str = strtok(NULL, delim);
 		if(str == NULL)
 			break;
-		head = insert(head, str, f1);
+		head = insert(head, str);
 		i += strlen(str);
 	}
 	sb_destroy(&file);
@@ -186,6 +197,7 @@ int main(int argc, char **argv)
 		ptr->WFD = ptr->numoccur/head->totalnodes;
 		ptr = ptr->next;
 	}
+	filenode* f = createFileNode(f1, head, head->totalnodes);
 	freeNodes(head);
 	return EXIT_SUCCESS;
 }
