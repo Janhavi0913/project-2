@@ -87,7 +87,10 @@ int check_suffix(char* filename, struct variables *var){
 
 void* directory_traverse(struct variables *var){
     char* curdir;
-    dir_dequeue(var.dirqu, var.filequ, &curdir, &var.active);
+    int procced = dir_dequeue(var.dirqu, var.filequ, &curdir, &var.active);
+	if(proceed != 0){ // no work is needed to be done exit the function and join all threads
+		return;
+	}
     DIR *pdir = opendir(curdir);
     struct dirent *entries;
     if(pdir == NULL){
@@ -134,7 +137,7 @@ int main(int argc, char **argv){
     data.dirqu = createQueue(NULL);
     data.d_threads = 1, data.f_threads = 1, data.a_threads = 1, data.inactive = 0;
     data.suffix = ".txt";
-    //data.filelist = createNode(NULL);
+    //data.filelist = (struct filenode*)malloc(sizeof(struct filenode));
     
     for(int m = 1; m < argc; m++){ // traverse through arguments look for optional arguments
         int length = strlen(argv[m]);
