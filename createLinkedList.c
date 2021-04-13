@@ -13,8 +13,9 @@ typedef struct wordnode
 {
 	char* word;
 	char* filename;
-	double numoccur;
+	int numoccur;
 	int totalnodes;
+	double WFD;
 	struct wordnode* next;
 } wordnode;
 
@@ -25,6 +26,7 @@ wordnode* createNode(char* word)
 	newnode->filename = NULL;
         newnode->numoccur = 1;
         newnode->totalnodes = 1;
+	newnode->WFD = 0;
         newnode->next = NULL;
         return newnode;
 }
@@ -138,7 +140,7 @@ void printLinkedlist(wordnode* head)
 	wordnode* ptr = head;
     while(ptr != NULL)
     {
-        printf("%s: %f\n", ptr->word, ptr->numoccur);
+        printf("%s: %f\n", ptr->word, ptr->WFD);
         ptr = ptr->next;
     }
 }
@@ -181,7 +183,7 @@ int main(int argc, char **argv)
 	wordnode* ptr = head;
 	while(ptr != NULL)
 	{
-		ptr->numoccur = ptr->numoccur/head->totalnodes;
+		ptr->WFD = ptr->numoccur/head->totalnodes;
 		ptr = ptr->next;
 	}
 	freeNodes(head);
