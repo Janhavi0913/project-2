@@ -27,8 +27,7 @@ typedef struct filenode
 	struct filenode* next;
 } filenode;
 
-wordnode* createNode(char* word)
-{
+wordnode* createNode(char* word){ // this would have to call insert method
         struct wordnode* newnode = (struct wordnode*)malloc(sizeof(struct wordnode));
         newnode->word = word;
         newnode->numoccur = 1;
@@ -38,11 +37,11 @@ wordnode* createNode(char* word)
         return newnode;
 }
 
-filenode* createFileNode(char* filename, wordnode* head, int totalnodes)
+filenode* createFileNode(char* filename, wordnode* head, int totalnodes) // make this a void* return, and change to accept struct as argument
 {
 	struct filenode* thenode = (struct filenode*)malloc(sizeof(struct filenode));
-	thenode->filename = filename;
-	thenode->head = head;
+	thenode->filename = filename; // dequeue from the file queue
+	thenode->head = head; // call method that makes the wordnode for that file
 	thenode->totalnodes = totalnodes;
 	return thenode;
 }
