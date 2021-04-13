@@ -8,12 +8,15 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+//#include "file.c"
 
 struct variables{
     int d_threads, f_threads, a_threads;
     char* suffix;
     struct Queue* filequ;
     struct Queue* dirqu;
+    struct wordnode* filelist;
+    int active;
 }variables;
 
 int op_args (char* input, struct variables *var){
@@ -21,30 +24,37 @@ int op_args (char* input, struct variables *var){
             return 1;
     }
     if(isdigit(input[2])){
-        char* temp1;
-        for(int p = 2; p < strlen(input); p++){
-            temp1 += input[p];
+        int length = strlen(input) - 2;
+        char* temp1 = (char*) malloc(length * sizeof(char));
+        strcpy(temp1,input[2]);
+        for(int p = 3; p < length; p++){
+            strcat(temp1,input[p]);
         }
-        if(atoi(temp1) == 0){
+        if(atoi(temp1) <= 0){
             return 1;
         }
         if(input[1] == 'd'){
-            var.d_threads = atoi(temp1);
+            var->d_threads = atoi(temp1);
         } 
         if(input[1] == 'f'){
-            var.f_threads = atoi(temp1);
+            var->f_threads = atoi(temp1);
         }
         if(input[1] == 'a'){
-            var.a_threads = atoi(temp1);
+            var->a_threads = atoi(temp1);
         }
+        free(temp1);
         return 0;
     }
-    else if(input[1] == 's'){
-        char* temp2;
-        for(int p = 2; p < strlen(input); p++){
-            temp2 += input[p];
+    if(input[1] == 's'){
+        int length = strlen(input) - 2;
+        char* temp2 = (char*) malloc(length * sizeof(char));
+        strcpy(temp2,input[2]);
+        for(int p = 2; p < length; p++){
+            strcat(temp2,input[p]);
         }
         strcpy(var.suffix, temp2);
+        free(temp2);
+        return 0;
     }
     else
         return 1; 
@@ -76,7 +86,8 @@ int check_suffix(char* filename, struct variables *var){
 }
 
 void* directory_traverse(struct variables *var){
-    char* curdir = dequeue(var.dirqu);
+    char* curdir;
+    dir_dequeue(var.dirqu, var.filequ, &curdir, &var.active);
     DIR *pdir = opendir(curdir);
     struct dirent *entries;
     if(pdir == NULL){
@@ -95,17 +106,18 @@ void* directory_traverse(struct variables *var){
             strcat(pathname,entries->d_name);
             if(isdir(pathname) == 1){ // this is a file 
                 if(check_suffix(pathname,var) == 1){ // add to file queue if the suffix match
-                    enqueue(var.filequ, pathname);
+                    fil_enqueue(var.filequ, pathname);
                     continue;
                 }
             }  
             else{ // this is a directory add to directory queue
-                enqueue(var.dirqu, pathname);
+                dir_enqueue(var.dirqu, pathname);
             }
         free(pathname);
         }
     }
-    if(isEmpty(var.dirqu) == 1){
+    free(curdir);
+    if(isEmpty(var.dirqu) == 0){
         directory_traverse(var);
     }
     pthread_exit(NULL);
@@ -116,82 +128,91 @@ int main(int argc, char **argv){
         perror("Number of argument error\n");
         return EXIT_FAILURE;
     }
-    struct variables *data = malloc(sizeof(*data));
-    data.filequ = createQueue();
-    data.dirqu = createQueue();
-    data.d_threads = 1, data.f_threads = 1, data.a_threads = 1;
-    data.suffix = ".txt";
 
-    for(int m = 1; m < argc; m++){ // traverse through arguments
+    struct variables *data = malloc(sizeof(*data));
+    data.filequ = createQueue(1000);
+    data.dirqu = createQueue(NULL);
+    data.d_threads = 1, data.f_threads = 1, data.a_threads = 1, data.inactive = 0;
+    data.suffix = ".txt";
+    //data.filelist = createNode(NULL);
+    
+    for(int m = 1; m < argc; m++){ // traverse through arguments look for optional arguments
         int length = strlen(argv[m]);
         char* input = (char*) malloc(length * sizeof(char));
         strcpy(input, argv[m]);
         if(input[0] == '-'){ // this is an optional argument
             int error = op_args(input, &data);
             if(error == 1){
-                perror("optional argument");
+                perror("Incorrect Optional Argument");
                 return EXIT_FAILURE;
             }
         }
-        else if(isdir(input) == 1){ // this is a file add to file queue
-            enqueue(data.filequ, input);
-        }
-        else{ // this is a directory add to directory queue
-            enqueue(data.dirqu, input);
-        }
         free(input);
     }
-    
-    int err;
-    pthread_t tid[data.d_threads];
+
+    /* int err1;
+    pthread_t fil_tid[data.f_threads]; // starting file threads
+    for(int m = 0; m < data.f_threads; m++){
+        err1 = pthread_create(&fil_tid[m], NULL, WFD, &data);
+        if(err1 != 0){
+            perror("pthread_create");
+            abort();
+        }
+    } */
+
+    for(int m = 1; m < argc; m++){ // traverse through arguments get directory and files
+        int length = strlen(argv[m]);
+        char* input = (char*) malloc(length * sizeof(char));
+        strcpy(input, argv[m]);
+        if(input[0] == '-'){ // this is an optional argument - ignore
+            continue;
+        }
+        else{
+            if(isdir(input) == 1){ // this is a file add to file queue
+                fil_enqueue(data.filequ, input);
+            }
+            else{ // this is a directory add to directory queue
+                dir_enqueue(data.dirqu, input);
+            }
+        free(input);
+        }
+    }
+
+    int err2;
+    pthread_t dir_tid[data.d_threads]; // starting directory threads
     for(int m = 0; m < data.d_threads; m++){
-        err = pthread_create(&tid[m], NULL, directory_traverse, &data);
-        if(err != 0){
+        err2 = pthread_create(&dir_tid[m], NULL, directory_traverse, &data);
+        if(err2 != 0){
             perror("pthread_create");
             abort();
         }
     }
+
     for(int m = 0; m < data.d_threads; m++){
-        pthread_join(tid[m], NULL);
+        pthread_join(dir_tid[m], NULL);
+    }
+    close_queue(data.filequ);
+    
+    for(int m = 0; m < data.f_threads; m++){
+        pthread_join(fil_tid[m], NULL);
     }
 
-    return 0;
+    // TODO: start analysis threads and phase 2 [JSD]
+    
+    return EXIT_SUCCESS;
 }
 
 /*
-typedef struct word_LL{ // this is a linked list that holds the words in the files and their frequencies
-    char* word;
-    int count;
-    int freq;
-    struct word_LL next;
-}word_LL;
-
-typedef struct fileWFD{ // this is a linked list that holds the name, word list, and their total for the WFD of the file
-    char* path;
-    struct word_LL;
-    int totalwords;
-}fileWFD;
-   
-while(isEmpty(filequ) == 1){
+while(isEmpty(fdata.filequ) == 0){
     char* arg;
-    strcpy(arg,dequeue(filequ));
+    dequeue(data.filequ, &arg);
     printf("File name: %s\n",arg);
 }
 printf("emptied list 1\n");
-while(isEmpty(dirqu) == 1){
-    printf("DIrectory name: %s\n",dequeue(dirqu));
+while(isEmpty(data.dirqu) == 0){
+    char* arg;
+    dequeue(data.dirqu, &arg);
+    printf("Directory name: %s\n",arg);;
 }
 printf("emptied list 2\n");
-
-printf("added now attempting traverse\n");
-    directory_traverse(NULL);
-    printf("i finished traversing direct\n");
-    while(isEmpty(filequ) == 1){
-        printf("File name %s\n", dequeue(filequ));
-    }
-    printf("Finished with files\n");
-    while(isEmpty(dirqu) == 1){
-        printf("Directory name %s\n", dequeue(dirqu));
-    }
-    printf("Finished with Directories\n");
 */
