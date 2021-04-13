@@ -25,7 +25,7 @@ typedef struct filenode
 	wordnode* head;
 	int totalnodes;
 	struct filenode* next;
-}
+} filenode;
 
 wordnode* createNode(char* word)
 {
