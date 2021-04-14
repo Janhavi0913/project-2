@@ -23,7 +23,7 @@ typedef struct filenode
 {
 	char* filename;
 	wordnode* head;
-	double totalnodes;
+	int totalnodes;
 	struct filenode* next;
 } filenode;
 
@@ -35,15 +35,6 @@ wordnode* createNode(char* word){ // this would have to call insert method
 	newnode->WFD = 0;
         newnode->next = NULL;
         return newnode;
-}
-
-filenode* createFileNode(char* filename, wordnode* head, int totalnodes) // make this a void* return, and change to accept struct as argument
-{
-	struct filenode* thenode = (struct filenode*)malloc(sizeof(struct filenode));
-	thenode->filename = filename; // dequeue from the file queue
-	thenode->head = head; // call method that makes the wordnode for that file
-	thenode->totalnodes = totalnodes;
-	return thenode;
 }
 
 void freeNodes(wordnode* head)
@@ -64,18 +55,43 @@ void printLinkedlist(wordnode* head)
     }
 }
 
-wordnode* createCombined(wordnode* file1, wordnode* file2)
+double totalcomputation(wordnode* file1, wordnode* file2, wordnode* file)
+{
+	double KLD1 = 0, KLD2 = 0, JSD = 0;
+	wordnode* ptr = file;
+	while(ptr != NULL)
+	{
+		while(strcmp(file1->word, ptr->word) != 0)
+			ptr = ptr->next;
+		KLD1 += (file1->numoccur*log2((file1->numoccur)/(ptr->numoccur)));
+		ptr = ptr->next;
+		file1 = file1->next;
+	}
+	wordnode* ptr2 = file;
+	while(ptr2 != NULL)
+	{
+		while(strcmp(file2->word, ptr2->word) != 0)
+			ptr2 = ptr2->next;
+		KLD2 += (file2->numoccur*log2((file2->numoccur)/(ptr2->numoccur)));
+		ptr2 = ptr2->next;
+		file2 = file2->next;
+	}
+	JSD = sqrt((0.5*KLD1)+(0.5*KLD2));
+	return JSD;
+}
+
+double createCombined(filenode* f1, filenode* f2)
 {
 	wordnode* fhead;
 	wordnode* ptr1;
 	wordnode* ptr2;
 	wordnode* fptr;
 	wordnode* prev;
-	ptr1 = file1->next;
-	ptr2 = file2;
-	fhead = createNode(file1->word);
-	fhead->numoccur = file1->numoccur;
-	fhead->totalnodes = file1->totalnodes + file2->totalnodes;
+	ptr1 = f1->head->next;
+	ptr2 = f2->head;
+	fhead = createNode(f1->head->word);
+	fhead->numoccur = f1->head->numoccur;
+	fhead->totalnodes = f1->totalnodes + f2->totalnodes;
 	fptr = fhead;
 	while(ptr1 != NULL)
 	{
@@ -143,79 +159,8 @@ wordnode* createCombined(wordnode* file1, wordnode* file2)
 		fptr->WFD = (double)fptr->numoccur/(double)fhead->totalnodes;
 		fptr = fptr->next;
 	}
-	return fhead;
-}
 
-double totalcomputation(wordnode* file1, wordnode* file2, wordnode* file)
-{
-	double KLD1 = 0, KLD2 = 0, JSD = 0;
-	wordnode* ptr = file;
-	while(ptr != NULL)
-	{
-		while(strcmp(file1->word, ptr->word) != 0)
-			ptr = ptr->next;
-		KLD1 += (file1->numoccur*log2((file1->numoccur)/(ptr->numoccur)));
-		ptr = ptr->next;
-		file1 = file1->next;
-	}
-	wordnode* ptr2 = file;
-	while(ptr2 != NULL)
-	{
-		while(strcmp(file2->word, ptr2->word) != 0)
-			ptr2 = ptr2->next;
-		KLD2 += (file2->numoccur*log2((file2->numoccur)/(ptr2->numoccur)));
-		ptr2 = ptr2->next;
-		file2 = file2->next;
-	}
-	JSD = sqrt((0.5*KLD1)+(0.5*KLD2));
-	return JSD;
-}
-
-int main(int argc, char **argv)
-{
-	wordnode* f1 = createNode("hi");
-	wordnode* f11 = createNode("there");
-	f1->next = f11;
-	f1->numoccur = 2;
-	f1->totalnodes = 4;
-	f11->numoccur = 2;
-	//filenode* file1 = createFileNode("f1.txt", f1, f1->totalnodes);
-
-	wordnode* f2 = createNode("apple");
-	wordnode* f21 = createNode("hi");
-	wordnode* f22 = createNode("out");
-	wordnode* f23 = createNode("there");
-	wordnode* f24 = createNode("z");
-	f2->next = f21;
-	f21->next = f22;
-	f22->next = f23;
-	f23->next = f24;
-	f2->numoccur = 1;
-	f2->totalnodes = 6;
-	f21->numoccur = 2;
-	f22->numoccur = 1;
-	f23->numoccur = 1;
-	f24->numoccur = 1;
-	//filenode* file2 = createFileNode("f2.txt", f2, f2->totalnodes);
-
-	wordnode* result = createCombined(f2, f1);
-	printLinkedlist(result);
-
-	freeNodes(f1);
-	freeNodes(f2);
-	freeNodes(result);
-
-	/*wordnode* f = createNode("hi");
-	wordnode* f01 = createNode("out");
-	wordnode* f02 = createNode("there");
-	f->next = f01;
-	f->numoccur = 0.5;
-	f01->next = f02;
-	f01->numoccur = 0.125;
-	f02->numoccur = 0.375;
-
-	double JSD;
-	JSD = totalcomputation(f1, f2, f);
-	printf("Result: %f\n", JSD);*/
-	return EXIT_SUCCESS;
+	double result = totalcomputation(f1->head, f2->head, fhead);
+	freeNodes(fhead);
+	return result;
 }
