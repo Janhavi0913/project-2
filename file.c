@@ -141,51 +141,6 @@ void freeNodes(wordnode* head){
     free(head);
 }
 
-void* filequeue_traverse(void *A){
-	struct variables *var = A;
-	char *curfile = NULL;
-	int proceed = fil_dequeue(var->dirqu, var->filqu, &curfile, var->active);
-    if(proceed != 0){
-		pthread_exit(NULL);
-    }
-
-	int fd = open(curfile, O_RDONLY);
-    	if(fd == -1)
-    		perror(curfile);
-
-	strbuf_t file = readFile(fd);
-
-	int i = 0;
-	char delim[2] = " ";
-	char* str = strtok(file.data, delim);
-	wordnode* head = insert(NULL, str);
-	i += strlen(str);
-
-	while(i < file.length){
-		str = strtok(NULL, delim);
-		if(str == NULL)
-			break;
-		head = insert(head, str);
-		i += strlen(str);
-	}
-
-	sb_destroy(&file);
-
-	wordnode* ptr = head;
-
-	while(ptr != NULL){
-		ptr->WFD = ptr->numoccur/head->totalnodes;
-		ptr = ptr->next;
-	}
-
-	//TODO ADD TO FILENODE FILELIST
-	/*
-		addtofileList(var->filelist, curfile, head); // this will call createfilenode
-	*/
-
-	freeNodes(head);
-}
-
 void* file_traverse(void *A){
 	struct variables *var = A;
 	char *curfile = NULL;
