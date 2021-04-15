@@ -119,6 +119,8 @@ strbuf_t readFile(int fd){
 			curr = tolower(a[0]);
 			if(curr != '\n')
 				sb_append(&file, curr);
+			else
+				sb_append(&file, ' ');
 		}
 		rval = read(fd, a, sizeof(char));
 	}
