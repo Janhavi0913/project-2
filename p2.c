@@ -19,7 +19,7 @@ struct variables{
     int *active;
 }variables;
 
-int d_thread = 1, f_thread = 2, a_thread = 1;
+int d_thread = 1, f_thread = 1, a_thread = 1;
 char *suf = ".txt";
 
 int op_args (char* input){
@@ -95,6 +95,7 @@ void* directory_traverse(void *A){
     char* curdir = NULL;
     int proceed = dir_dequeue(var->dirqu, var->filequ, &curdir, var->active, var->thread_id);
 	if(proceed != 0){ // no work is needed to be done exit the function and join all threads
+        printf("[%d]DIR Exiting...\n",var->thread_id);
         pthread_exit(NULL);
 	}
    
@@ -102,6 +103,7 @@ void* directory_traverse(void *A){
     struct dirent *entries;
     if(pdir == NULL){
         perror("Directory cannot be open");
+        continue;
     }
     while((entries = readdir(pdir)) != NULL){
         if(!strcmp(".",entries->d_name) || !strcmp("..",entries->d_name)){
@@ -133,7 +135,7 @@ void* directory_traverse(void *A){
 
 void* file_traverse(void *A){
 	struct variables *var = (struct variables *)A;
-    printf("[%d] FILE Thread is here\n",var->thread_id);
+    printf("[%d] FILE Thread the fl count we are seeing is %d\n",var->thread_id,*var->filelist->total_files);
 	while((var->active != 0) || (isEmpty(var->filequ) == 0)){
 		char *curfile = NULL;
 		int proceed = fil_dequeue(var->dirqu, var->filequ, &curfile, var->active, var->thread_id);
@@ -143,9 +145,11 @@ void* file_traverse(void *A){
 		}
         printf("[%d]] FILE Processing file %s\n",var->thread_id,curfile);
 		int fd = open(curfile, O_RDONLY);
-			if(fd == -1)
-				perror(curfile);
-
+			if(fd == -1){
+                perror(curfile);
+                continue;
+            }
+				
 		strbuf_t file = readFile(fd);
 
 		int i = 0;
@@ -185,11 +189,14 @@ int main(int argc, char **argv){
 
     struct Queue fq;
     struct Queue dq;
-    struct filenode *fl = (struct filenode*)malloc(sizeof(struct filenode));
-    fl->filename = NULL;
+    struct filenode* fl =  malloc(sizeof(struct filenode));
+    init(fl);
+    int file_count = 0;
+    fl[0].total_files = &file_count;
     struct variables *data;
     pthread_t *tids;
     pthread_mutex_t file_lock;
+    printf("here the total files is %d\n",*fl[0].total_files);
 
     // traverse optional arguments
     for(int m = 1; m < argc; m++){ 
@@ -220,7 +227,7 @@ int main(int argc, char **argv){
 	    data[p].filequ = &fq;
 	    data[p].dirqu = &dq;
         data[p].thread_id = p;
-        data[p].filelist = fl;
+        data[p].filelist = &fl[0];
         data[p].lock = &file_lock;
 	    data[p].active = &active;
         error = pthread_create(&tids[p], NULL, file_traverse, &data[p]);
@@ -256,7 +263,7 @@ int main(int argc, char **argv){
 	    data[p].filequ = &fq;
 	    data[p].dirqu = &dq;
         data[p].thread_id = p;
-        data[p].filelist = fl;
+        data[p].filelist = &fl[0];
 	    data[p].active = &active;
         error = pthread_create(&tids[p], NULL, directory_traverse, &data[p]);
         printf("thread id %ld\n", tids[p]);
@@ -274,15 +281,26 @@ int main(int argc, char **argv){
     }
     printf("threads are done\n");
 
-    printf("[0]Name of file is %s\n", data[0].filelist->filename);
+    //data[0].filelist = data[0].filelist->next;
+    printf("[0]Name of file is %s this is the total files %d\n", data[0].filelist->filename, *data[0].filelist->total_files);
     //printf("Name of file is %d\n", data[0].filelist->totalnodes);
-    printf("[1]Name of file is %s\n", data[0].filelist->next->filename);
+    //printf("[1]Name of file is %s this is the total files %d\n", data[0].filelist->next->filename, *data[0].filelist->next->total_files);
+    printLinkedlist(data[0].filelist->head);
+    //printf("[1]Name of file is %s\n", data[0].filelist->next->next->filename);
     //printf("Name of file is %s\n", data[1].filelist->filename);
-
     destroy_lock(data->dirqu);
     destroy_lock(data->filequ);
     free(data);
     free(tids);
 
     return EXIT_SUCCESS;
+
+    /*
+    int test_value = 10;
+    struct filenode *fl = malloc((sizeof(struct filenode)));
+    fl[0].total_files = &test_value;
+    printf("This is the test value %d\n",test_value);
+    printf("This is the value referenced in total_files %d\n",*fl[0].total_files);
+    */
+
 }

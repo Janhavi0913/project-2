@@ -22,8 +22,18 @@ typedef struct filenode{
 	char* filename;
 	wordnode* head;
 	int totalnodes;
+	int* total_files;
 	struct filenode* next;
 } filenode;
+
+int init(struct filenode *f){
+	f->filename = NULL;
+	f->head = NULL;
+	f->totalnodes = 0;
+	f->next = NULL;
+    
+    return 0;
+}
 
 wordnode* createNode(char* word){
         struct wordnode* newnode = (struct wordnode*)malloc(sizeof(struct wordnode));
@@ -34,15 +44,6 @@ wordnode* createNode(char* word){
         newnode->next = NULL;
         return newnode;
 }
-
-/* filenode* createFileNode(char* filename, wordnode* head, int totalnodes){ 
-	struct filenode* thenode = (struct filenode*)malloc(sizeof(struct filenode));
-	thenode->filename = filename; // dequeue from the file queue
-	thenode->head = head; // call method that makes the wordnode for that file
-	thenode->totalnodes = totalnodes;
-	thenode->next = NULL;
-	return thenode;
-} */
 
 wordnode* insert(wordnode* head, char* word){
 	if(head == NULL){
@@ -136,23 +137,33 @@ int addToFileList(filenode *fl, char* fname, wordnode *wl, int id, pthread_mutex
 	printf("[%d]Grabbed the lock\n", id);
 
     struct filenode* add = (struct filenode*)malloc(sizeof(struct filenode));
-	add->filename = fname; // dequeue from the file queue
-	add->head = wl; // call method that makes the wordnode for that file
+	add->filename = fname;
+	add->head = wl;
 	add->totalnodes = wl->totalnodes;
+	//add->total_files = fl->total_files + 1;
 	add->next = NULL;
+	add->total_files = fl->total_files;
 	printf("[%d] has made a new node \n",id);
+	
+	printf("this is what is fl filename %d\n", *fl->total_files);
 
-	if(fl->filename == NULL){
+	if(*fl->total_files == 0){
 		printf("[%d] adding to front\n", id);
-		fl = add;
-		printf("[%d] Has added to front\n",id);
+		*fl = *add;
+		++(*fl->total_files);
+		printf("[%d] Has added to front %d\n",id, *fl->total_files);
 	}
 	else{
+		printf("[%d] total files was not 0 adding to end %d\n",id, *fl->total_files);
 		filenode *ptr = fl;
-		while(ptr->next != NULL){
+		filenode *prev;
+		while(ptr != NULL){
+			prev = ptr;
 			ptr = ptr->next;
 		}
-		ptr->next = add;
+		prev->next = add;
+		++(*fl->total_files);
+		printf("[%d] total files is now %d\n",id, *fl->total_files);
 	}
 
     printf("[%d] FT Name of the file is %s\n", id,fl->filename);
