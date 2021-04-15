@@ -181,6 +181,14 @@ void* file_traverse(void *A){
 	}
 }
 
+void freeFileNodes(filenode* head){
+    if(head != NULL)
+        return;
+    freeFileNodes(head->next);
+    freeNodes(head->head);
+    free(head);
+}
+
 int main(int argc, char **argv){
     if(argc < 2){ 
         perror("Number of argument error\n");
