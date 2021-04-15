@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 #include <ctype.h>
 #include <unistd.h>
 #include "strbuf.c"
@@ -9,7 +10,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-//1. create combined file 2. do computation 3. destroy combined file 4. return computation
 typedef struct wordnode{
 	char* word;
 	int numoccur;
@@ -30,18 +30,19 @@ wordnode* createNode(char* word){
         newnode->word = word;
         newnode->numoccur = 1;
         newnode->totalnodes = 1;
-	newnode->WFD = 0;
+		newnode->WFD = 0;
         newnode->next = NULL;
         return newnode;
 }
 
-filenode* createFileNode(char* filename, wordnode* head, int totalnodes){ 
+/* filenode* createFileNode(char* filename, wordnode* head, int totalnodes){ 
 	struct filenode* thenode = (struct filenode*)malloc(sizeof(struct filenode));
 	thenode->filename = filename; // dequeue from the file queue
 	thenode->head = head; // call method that makes the wordnode for that file
 	thenode->totalnodes = totalnodes;
+	thenode->next = NULL;
 	return thenode;
-}
+} */
 
 wordnode* insert(wordnode* head, char* word){
 	if(head == NULL){
@@ -125,7 +126,41 @@ strbuf_t readFile(int fd){
 		rval = read(fd, a, sizeof(char));
 	}
 	close(fd);
+	free(a);
 	return file;
+}
+
+int addToFileList(filenode *fl, char* fname, wordnode *wl, int id, pthread_mutex_t *l){
+    printf("[%d] FILE Thread waiting for lock in add \n",id);
+	pthread_mutex_lock(l); // only one thread add to list at a time
+	printf("[%d]Grabbed the lock\n", id);
+
+    struct filenode* add = (struct filenode*)malloc(sizeof(struct filenode));
+	add->filename = fname; // dequeue from the file queue
+	add->head = wl; // call method that makes the wordnode for that file
+	add->totalnodes = wl->totalnodes;
+	add->next = NULL;
+	printf("[%d] has made a new node \n",id);
+
+	if(fl->filename == NULL){
+		printf("[%d] adding to front\n", id);
+		fl = add;
+		printf("[%d] Has added to front\n",id);
+	}
+	else{
+		filenode *ptr = fl;
+		while(ptr->next != NULL){
+			ptr = ptr->next;
+		}
+		ptr->next = add;
+	}
+
+    printf("[%d] FT Name of the file is %s\n", id,fl->filename);
+
+    printf("[%d] FILE Thread is going to released the lock in add \n",id);
+	pthread_mutex_unlock(l); // now we're done
+    printf("[%d] FILE Thread has released the lock in add \n",id);
+	return 0;
 }
 
 void printLinkedlist(wordnode* head){
@@ -141,102 +176,4 @@ void freeNodes(wordnode* head){
         return;
     freeNodes(head->next);
     free(head);
-}
-
-void* file_traverse(void *A){
-	struct variables *var = A;
-	char *curfile = NULL;
-	int proceed = fil_dequeue(var->dirqu, var->filqu, &curfile, var->active);
-    if(proceed != 0){
-		pthread_exit(NULL);
-    }
-
-	int fd = open(curfile, O_RDONLY);
-    	if(fd == -1)
-    		perror(curfile);
-
-	strbuf_t file = readFile(fd);
-
-	int i = 0;
-	char delim[2] = " ";
-	char* str = strtok(file.data, delim);
-	wordnode* head = insert(NULL, str);
-	i += strlen(str);
-
-	while(i < file.length){
-		str = strtok(NULL, delim);
-		if(str == NULL)
-			break;
-		head = insert(head, str);
-		i += strlen(str);
-	}
-
-	sb_destroy(&file);
-
-	wordnode* ptr = head;
-
-	while(ptr != NULL){
-		ptr->WFD = ptr->numoccur/head->totalnodes;
-		ptr = ptr->next;
-	}
-
-	/*  TODO ADD TO FILENODE FILELIST
-		addtofileList(var->filelist, curfile, head); // this will call createfilenode
-	*/
-
-	freeNodes(head);
-}
-
-int main(int argc, char **argv){
-	if(argc < 2){ // too little arguments
-		printf("Number of argument error\n");
-		return EXIT_FAILURE;
-	}
-
-	//starting file threads
-	pthread_t *file_tid;
-	int err2, active = d_thread;
-    data = malloc(f_thread * sizeof(struct variables));
-    file_tid = malloc(f_thread * sizeof(pthread_t));
-    for(int m = 0; m < f_thread; m++){
-	    data[m].filequ = &fq;
-	    data[m].dirqu = &dq;
-        data[m].thread_id = m;
-	    data[m].active = &active;
-        err2 = pthread_create(&file_tid[m], NULL, file_traverse, &data[m]);
-        printf("thread id %ld\n", file_tid[m]);
-        if(err2 != 0){
-            perror("pthread_create");
-            abort();
-        }
-    }
-
-	/*char* f1 = argv[1];
-    	int fd = open(f1, O_RDONLY);
-    	if(fd == -1)
-    		perror(argv[2]);
-	strbuf_t file = readFile(fd);
-	int i = 0;
-	char delim[2] = " ";
-	char* str = strtok(file.data, delim);
-	wordnode* head = insert(NULL, str);
-	i += strlen(str);
-	while(i < file.length){
-		str = strtok(NULL, delim);
-		if(str == NULL)
-			break;
-		head = insert(head, str);
-		i += strlen(str);
-	}
-	sb_destroy(&file);
-	wordnode* ptr = head;
-	while(ptr != NULL){
-		ptr->WFD = ptr->numoccur/head->totalnodes;
-		ptr = ptr->next;
-	}
-	
-	filenode* f = createFileNode(f1, head, head->totalnodes);
-	freeNodes(head);
-	*/
-	return EXIT_SUCCESS;
 }

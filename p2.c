@@ -8,17 +8,18 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "queue.c"
-//#include "file.c"
+#include "file.c"
 
 struct variables{
     struct Queue* filequ;
     struct Queue* dirqu;
     int thread_id;
-    //struct wordnode* filelist;
+    struct filenode* filelist;
+    pthread_mutex_t *lock;
     int *active;
 }variables;
 
-int d_thread = 3, f_thread = 1, a_thread = 1;
+int d_thread = 1, f_thread = 2, a_thread = 1;
 char *suf = ".txt";
 
 int op_args (char* input){
@@ -89,16 +90,14 @@ void destroy_lock(Queue* dq){
     pthread_cond_destroy(&dq->write_ready); 
 }
 void* directory_traverse(void *A){
+    while(1){
     struct variables *var = A;
     char* curdir = NULL;
-    printf("[%d] Thread is here\n",var->thread_id);
     int proceed = dir_dequeue(var->dirqu, var->filequ, &curdir, var->active, var->thread_id);
 	if(proceed != 0){ // no work is needed to be done exit the function and join all threads
-        printf("[%d] Exiting...\n",var->thread_id);
         pthread_exit(NULL);
 	}
-    printf("[%d]]Processing file %s\n",var->thread_id,curdir);
-
+   
     DIR *pdir = opendir(curdir);
     struct dirent *entries;
     if(pdir == NULL){
@@ -128,8 +127,54 @@ void* directory_traverse(void *A){
     }
     closedir(pdir);
     free(curdir);
-    
-    directory_traverse(var);
+    }
+
+}
+
+void* file_traverse(void *A){
+	struct variables *var = (struct variables *)A;
+    printf("[%d] FILE Thread is here\n",var->thread_id);
+	while((var->active != 0) || (isEmpty(var->filequ) == 0)){
+		char *curfile = NULL;
+		int proceed = fil_dequeue(var->dirqu, var->filequ, &curfile, var->active, var->thread_id);
+		if(proceed != 0){
+            printf("[%d]FILE Exiting...\n",var->thread_id);
+			pthread_exit(NULL);
+		}
+        printf("[%d]] FILE Processing file %s\n",var->thread_id,curfile);
+		int fd = open(curfile, O_RDONLY);
+			if(fd == -1)
+				perror(curfile);
+
+		strbuf_t file = readFile(fd);
+
+		int i = 0;
+		char delim[2] = " ";
+		char* str = strtok(file.data, delim);
+		wordnode* head = insert(NULL, str);
+		i += strlen(str);
+
+		while(i < file.length){
+			str = strtok(NULL, delim);
+			if(str == NULL)
+				break;
+			head = insert(head, str);
+			i += strlen(str);
+		}
+
+		sb_destroy(&file);
+
+		wordnode* ptr = head;
+
+		while(ptr != NULL){
+			ptr->WFD = ptr->numoccur/head->totalnodes;
+			ptr = ptr->next;
+		}
+
+		addToFileList(var->filelist, curfile, head, var->thread_id, var->lock); // this will call createfilenode
+
+		//freeNodes(head);
+	}
 }
 
 int main(int argc, char **argv){
@@ -140,10 +185,14 @@ int main(int argc, char **argv){
 
     struct Queue fq;
     struct Queue dq;
+    struct filenode *fl = (struct filenode*)malloc(sizeof(struct filenode));
+    fl->filename = NULL;
     struct variables *data;
-    pthread_t *dir_tid;
+    pthread_t *tids;
+    pthread_mutex_t file_lock;
 
-    for(int m = 1; m < argc; m++){ // traverse optional arguments
+    // traverse optional arguments
+    for(int m = 1; m < argc; m++){ 
         int length = strlen(argv[m])+1;
         char* input = (char*) malloc(length * sizeof(char));
         strcpy(input, argv[m]);
@@ -157,12 +206,33 @@ int main(int argc, char **argv){
         free(input);
     }
 
+    int total_threads = f_thread + d_thread;
     createFQueue(&fq,"1000");
     createDQueue(&dq);
+    pthread_mutex_init(&file_lock, NULL);
+
+    int p, error, active = d_thread;
+    data = malloc(total_threads * sizeof(struct variables));
+    tids = malloc(total_threads * sizeof(pthread_t));
+
+    // start file threads
+    for(p = 0; p < f_thread; p++){
+	    data[p].filequ = &fq;
+	    data[p].dirqu = &dq;
+        data[p].thread_id = p;
+        data[p].filelist = fl;
+        data[p].lock = &file_lock;
+	    data[p].active = &active;
+        error = pthread_create(&tids[p], NULL, file_traverse, &data[p]);
+        printf("thread id %ld\n", tids[p]);
+        if(error != 0){
+            perror("pthread_create");
+            abort();
+        }
+    } 
 	
-    // TODO: start file threads 
-	
-    for(int m = 1; m < argc; m++){ // traverse through arguments get directory and files
+    // traverse arguments for directory and files
+    for(int m = 1; m < argc; m++){ 
         int length = strlen(argv[m])+1;
         char* input = (char*) malloc(length * sizeof(char));
         strcpy(input, argv[m]);
@@ -175,39 +245,44 @@ int main(int argc, char **argv){
                fil_enqueue(&fq, input);
             }
             else{ // directory add to directory queue
-              dir_enqueue(&dq, input, 4);
+              dir_enqueue(&dq, input, -1);
             }
         }
         free(input);
     }
-       
-    int err2, active = d_thread;
-    data = malloc(d_thread * sizeof(struct variables));
-    dir_tid = malloc(d_thread * sizeof(pthread_t));
-    for(int m = 0; m < d_thread; m++){
-	    data[m].filequ = &fq;
-	    data[m].dirqu = &dq;
-        data[m].thread_id = m;
-	    data[m].active = &active;
-        err2 = pthread_create(&dir_tid[m], NULL, directory_traverse, &data[m]);
-        printf("thread id %ld\n", dir_tid[m]);
-        if(err2 != 0){
+
+    // start directory threads
+    for(; p < total_threads; p++){
+	    data[p].filequ = &fq;
+	    data[p].dirqu = &dq;
+        data[p].thread_id = p;
+        data[p].filelist = fl;
+	    data[p].active = &active;
+        error = pthread_create(&tids[p], NULL, directory_traverse, &data[p]);
+        printf("thread id %ld\n", tids[p]);
+        if(error != 0){
             perror("pthread_create");
             abort();
         }
     }
     printf("main is continue\n");
 
-    for(int m = 0; m < d_thread; m++){
-        err2 = pthread_join(dir_tid[m], NULL);
+    // TODO: start analysis threads phase 2 [JSD]
+
+    for(int m = 0; m < total_threads; m++){
+        pthread_join(tids[m], NULL);
     }
     printf("threads are done\n");
 
-    destroy_lock(data->dirqu);
-    free(data);
-    free(dir_tid);
+    printf("[0]Name of file is %s\n", data[0].filelist->filename);
+    //printf("Name of file is %d\n", data[0].filelist->totalnodes);
+    printf("[1]Name of file is %s\n", data[0].filelist->next->filename);
+    //printf("Name of file is %s\n", data[1].filelist->filename);
 
-    // TODO: start analysis threads and phase 2 [JSD]
-    
+    destroy_lock(data->dirqu);
+    destroy_lock(data->filequ);
+    free(data);
+    free(tids);
+
     return EXIT_SUCCESS;
 }
