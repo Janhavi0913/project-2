@@ -117,12 +117,15 @@ strbuf_t readFile(int fd){
 	strbuf_t file;
 	sb_init(&file, 5);
 	while(rval == 1){
-		if(ispunct(a[0]) == 0 || a[0] == '-' || isspace(a[0]) == 0 || a[0] == ' '){
+		if(ispunct(a[0]) == 0 && isspace(a[0]) == 0){
 			curr = tolower(a[0]);
-			if(curr != '\n')
-				sb_append(&file, curr);
-			else
-				sb_append(&file, ' ');
+			sb_append(&file, curr);
+		}
+		else if(a[0] == '-' || a[0] == ' '){
+			sb_append(&file, curr);
+		}
+		else{
+			sb_append(&file, ' ');
 		}
 		rval = read(fd, a, sizeof(char));
 	}
