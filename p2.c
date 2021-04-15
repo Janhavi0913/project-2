@@ -171,7 +171,7 @@ void* file_traverse(void *A){
 		wordnode* ptr = head;
 
 		while(ptr != NULL){
-			ptr->WFD = ptr->numoccur/head->totalnodes;
+			ptr->WFD = (double)ptr->numoccur/(double)head->totalnodes;
 			ptr = ptr->next;
 		}
 
