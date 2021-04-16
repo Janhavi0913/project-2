@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "strbuf.c"
 #include "queue.c"
 #include "file.c"
 
@@ -23,18 +24,29 @@ int d_thread = 1, f_thread = 1, a_thread = 1;
 char *suf = ".txt";
 
 int op_args (char* input){
-    if((input[1] != 'd') || (input[1] != 'f') || (input[1] != 'a') || (input[1] != 's') ){
+    if((input[1] != 'd') && (input[1] != 'f') && (input[1] != 'a') && (input[1] != 's') ){
             return 1;
     }
-    if(isdigit(input[2])){
-        char* temp1;
+    if(input[1] == 's'){
+        char* temp2 = calloc( (strlen(input)) , sizeof(char));
+        memcpy(temp2, &input[2],(strlen(input)-2));
+        temp2[(strlen(input)-1)] = '\0';
+    
+        suf = temp2;
+        return 0;
+    }
+        char* temp1 = calloc( (strlen(input)) , sizeof(char));
+        memcpy(temp1, &input[2],(strlen(input)-2));
+        temp1[(strlen(input)-1)] = '\0';
 
-        for(int p = 2; p < strlen(input); p++){
-            temp1+=input[p];
-        }
-        if(atoi(temp1) <= 0){
+        if(temp1 == NULL){
             return 1;
         }
+        
+        if(atoi(temp1) <= 0){
+            free(temp1);
+            return 1;
+        } 
         if(input[1] == 'd'){
             d_thread = atoi(temp1);
         } 
@@ -44,20 +56,7 @@ int op_args (char* input){
         if(input[1] == 'a'){
             a_thread = atoi(temp1);
         }
-        free(temp1);
-        return 0;
-    }
-    if(input[1] == 's'){
-        char* temp2; 
-        for(int p = 2; p < strlen(input); p++){
-            temp2 += input[p];
-        }
-        strcpy(suf, temp2);
-        free(temp2);
-        return 0;
-    }
-    else
-        return 1; 
+       return 0; 
 }
 
 int isdir(char *name) {
@@ -102,6 +101,7 @@ void* directory_traverse(void *A){
     DIR *pdir = opendir(curdir);
     struct dirent *entries;
     if(pdir == NULL){
+        free(curdir);
         perror("Directory cannot be open");
         continue;
     }
@@ -154,8 +154,11 @@ void* file_traverse(void *A){
 
 		int i = 0;
 		char delim[2] = " ";
-		char* str = strtok(file.data, delim);
+		char* str;
+        str = strtok(file.data, delim);
+        printf("the word is %s\n ", str);
 		wordnode* head = insert(NULL, str);
+        
 		i += strlen(str);
 
 		while(i < file.length){
@@ -163,35 +166,28 @@ void* file_traverse(void *A){
 			if(str == NULL)
 				break;
 			head = insert(head, str);
+            //printf("In the while loop word in head is %s\n", head->word);
 			i += strlen(str);
 		}
 
-		sb_destroy(&file);
+		
 
 		wordnode* ptr = head;
-
+        //printf("Before pointer look this is the word in head is %s\n", head->word);
 		while(ptr != NULL){
 			ptr->WFD = (double)ptr->numoccur/(double)head->totalnodes;
 			ptr = ptr->next;
 		}
-
+        printf(" After pointer look this is the word in head is %s\n", head->word);
 		addToFileList(var->filelist, curfile, head, var->thread_id, var->lock); // this will call createfilenode
-
+        sb_destroy(&file);
 		//freeNodes(head);
 	}
 }
 
-void freeFileNodes(filenode* head){
-    if(head != NULL)
-        return;
-    freeFileNodes(head->next);
-    freeNodes(head->head);
-    free(head);
-}
-
 int main(int argc, char **argv){
     if(argc < 2){ 
-        perror("Number of argument error\n");
+        perror("Number of argument error");
         return EXIT_FAILURE;
     }
 
@@ -204,7 +200,7 @@ int main(int argc, char **argv){
     struct variables *data;
     pthread_t *tids;
     pthread_mutex_t file_lock;
-    printf("here the total files is %d\n",*fl[0].total_files);
+    printf("here the total files is %d\n",*fl[0].total_files); 
 
     // traverse optional arguments
     for(int m = 1; m < argc; m++){ 
@@ -214,12 +210,14 @@ int main(int argc, char **argv){
         if(input[0] == '-'){ // optional argument
             int error = op_args(input);
             if(error == 1){
+                free(input);
                 perror("Incorrect Optional Argument");
-                return EXIT_FAILURE;
+                exit(0);
             }
         }
         free(input);
     }
+    printf("these are values of for dthread:%d for fthread:%d for a_thread:%d suffix:%s\n", d_thread, f_thread, a_thread, suf);
 
     int total_threads = f_thread + d_thread;
     createFQueue(&fq,"1000");
@@ -298,17 +296,11 @@ int main(int argc, char **argv){
     //printf("Name of file is %s\n", data[1].filelist->filename);
     destroy_lock(data->dirqu);
     destroy_lock(data->filequ);
+    //free(data[0].filelist);
+
     free(data);
     free(tids);
 
     return EXIT_SUCCESS;
-
-    /*
-    int test_value = 10;
-    struct filenode *fl = malloc((sizeof(struct filenode)));
-    fl[0].total_files = &test_value;
-    printf("This is the test value %d\n",test_value);
-    printf("This is the value referenced in total_files %d\n",*fl[0].total_files);
-    */
 
 }

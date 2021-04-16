@@ -4,7 +4,7 @@
 #include <pthread.h>
 #include <ctype.h>
 #include <unistd.h>
-#include "strbuf.c"
+//#include "strbuf.c"
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -37,7 +37,9 @@ int init(struct filenode *f){
 
 wordnode* createNode(char* word){
         struct wordnode* newnode = (struct wordnode*)malloc(sizeof(struct wordnode));
-        newnode->word = word;
+		char *word_insert = (char*) malloc((strlen(word)+1) * sizeof(char));
+		strcpy(word_insert, word);
+        newnode->word = word_insert;
         newnode->numoccur = 1;
         newnode->totalnodes = 1;
 		newnode->WFD = 0;
@@ -46,6 +48,7 @@ wordnode* createNode(char* word){
 }
 
 wordnode* insert(wordnode* head, char* word){
+	printf("made it inside the insert. the word is %s\n", word);
 	if(head == NULL){
 		wordnode* thenode  = createNode(word);
 		head = thenode;
@@ -117,18 +120,20 @@ strbuf_t readFile(int fd){
 	strbuf_t file;
 	sb_init(&file, 5);
 	while(rval == 1){
+		curr = tolower(a[0]);
 		if(ispunct(a[0]) == 0 && isspace(a[0]) == 0){
-			curr = tolower(a[0]);
 			sb_append(&file, curr);
 		}
-		else if(a[0] == '-' || a[0] == ' '){
+		else if(a[0] == '-' && a[0] == ' '){
 			sb_append(&file, curr);
 		}
 		else{
 			sb_append(&file, ' ');
 		}
+		printf("the letter is %c\n", a[0]);
 		rval = read(fd, a, sizeof(char));
 	}
+	printf("this is what is in file %s\n",file.data);
 	close(fd);
 	free(a);
 	return file;
