@@ -16,6 +16,9 @@ struct variables{
     struct Queue* dirqu;
     int thread_id;
     struct filenode* filelist;
+	struct comp_result* results;
+    int start;
+    int end;
     pthread_mutex_t *lock;
     int *active;
 }variables;
@@ -200,6 +203,10 @@ int main(int argc, char **argv){
     struct variables *data;
     pthread_t *tids;
     pthread_mutex_t file_lock;
+	int numfiles = data[0].fl->total_files[0];
+    int comparisons = numfiles*(numfiles-1)/2;
+    int perthread = comparisons/numfiles;
+    struct comp_result* results = comparisons*malloc(sizeof(struct comp_result));
     printf("here the total files is %d\n",*fl[0].total_files); 
 
     // traverse optional arguments
@@ -219,7 +226,7 @@ int main(int argc, char **argv){
     }
     printf("these are values of for dthread:%d for fthread:%d for a_thread:%d suffix:%s\n", d_thread, f_thread, a_thread, suf);
 
-    int total_threads = f_thread + d_thread;
+    int total_threads = f_thread + d_thread + a_thread;
     createFQueue(&fq,"1000");
     createDQueue(&dq);
     pthread_mutex_init(&file_lock, NULL);
@@ -265,7 +272,7 @@ int main(int argc, char **argv){
     }
 
     // start directory threads
-    for(; p < total_threads; p++){
+    for(p; p < total_threads - a_thread; p++){
 	    data[p].filequ = &fq;
 	    data[p].dirqu = &dq;
         data[p].thread_id = p;
@@ -282,25 +289,65 @@ int main(int argc, char **argv){
 
     // TODO: start analysis threads phase 2 [JSD]
 
+	
+	filelist *ptr1, *ptr2;
+    ptr1 = data[p].filelist;
+    ptr2 = data[p].filelist->next;
+    int i = 0;
+    while(ptr1 != NULL)
+    {
+        while(ptr2 != NULL)
+        {
+            results[i]->file1 = ptr1->filename;
+            results[i]->file2 = ptr2->filename;
+            i ++;
+            ptr2 = ptr2->next;
+        }
+        ptr1 = ptr1->next;
+        ptr2 = ptr1->next;
+    }
+
+    int err4;
+    data[p].start = 0;
+    data[p].end = perthreads;
+    for(; p < totalthreads; p ++)
+    {
+        data[p].thread_id = p;
+        data[p].filelist = &fl[0];
+        data[p].results = results;
+        data[p].lock = &file_lock;
+        err4 = pthread_create(&tids[p], NULL, analysis, &data[p]);
+        if(err4 != 0)
+        {
+            perror("pthread_create");
+            abort();
+        }
+        data[p+1].start = data[p].start + perthreads;
+        data[p+1].end += data[p].end + perthreads;
+    }
+	
     for(int m = 0; m < total_threads; m++){
         pthread_join(tids[m], NULL);
     }
     printf("threads are done\n");
+	
+	for (i = 0; i < comparisons; ++i) {
+        printf("%d %s %s\n", results[i].JSD, results[i].file1, results[i].file2);
+    }
 
     //data[0].filelist = data[0].filelist->next;
-    printf("[0]Name of file is %s this is the total files %d\n", data[0].filelist->filename, *data[0].filelist->total_files);
+    //printf("[0]Name of file is %s this is the total files %d\n", data[0].filelist->filename, *data[0].filelist->total_files);
     //printf("Name of file is %d\n", data[0].filelist->totalnodes);
     //printf("[1]Name of file is %s this is the total files %d\n", data[0].filelist->next->filename, *data[0].filelist->next->total_files);
-    printLinkedlist(data[0].filelist->head);
     //printf("[1]Name of file is %s\n", data[0].filelist->next->next->filename);
     //printf("Name of file is %s\n", data[1].filelist->filename);
+    printLinkedlist(data[0].filelist->head);
+    freeFileNodes(data[0].filelist);
+    free(results);
     destroy_lock(data->dirqu);
     destroy_lock(data->filequ);
-    //free(data[0].filelist);
-
     free(data);
     free(tids);
 
     return EXIT_SUCCESS;
-
 }
