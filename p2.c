@@ -91,6 +91,13 @@ void destroy_lock(Queue* dq){
     pthread_cond_destroy(&dq->read_ready);
     pthread_cond_destroy(&dq->write_ready); 
 }
+void freeFileNodes(filenode* head){
+    if(head != NULL)
+        return;
+    freeFileNodes(head->next);
+    freeNodes(head->head);
+    free(head);
+}
 void* directory_traverse(void *A){
     while(1){
     struct variables *var = A;
@@ -186,6 +193,32 @@ void* file_traverse(void *A){
         sb_destroy(&file);
 		//freeNodes(head);
 	}
+}
+
+void* analysis(void *A)
+{
+    struct variables *var = (struct variables *)A;
+    printf("[%d] Analysis Thread\n",var->thread_id);
+    int i;
+    for(i = var->start; i < var->end; i ++)
+    {
+        char *file1, *file2;
+        filenode* f1, *f2;
+        filenode* ptr = var->filelist.head;
+        while(ptr != NULL)
+        {
+            if(strcmp(ptr->filename, file1) == 0)
+                f1 = ptr;
+            else if(strcmp(ptr->filename, file2) == 0)
+                f2 = ptr;
+            if(f1 != NULL && f2 != NULL)
+                break;
+            ptr = ptr->next;
+        }
+        addToArray(var->thread_id, var->results, f1, f2);
+        free(file1);
+        free(file2);
+    }
 }
 
 int main(int argc, char **argv){
