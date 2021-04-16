@@ -16,7 +16,7 @@ typedef struct comp_result {
     double JSD;     // JSD between file 1 and file 2
 }comp_result;
 
-comp_result* Create(char* f1, char* f2, unsigned total, double JSD)
+comp_result Create(char* f1, char* f2, unsigned total, double JSD)
 {
 	struct comp_result* res = (struct comp_result*)malloc(sizeof(struct comp_result));
 	res->file1 = f1;
