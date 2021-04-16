@@ -241,8 +241,8 @@ int main(int argc, char **argv){
 	int numfiles = data[0].fl->total_files[0];
     int comparisons = numfiles*(numfiles-1)/2;
     int perthread = comparisons/numfiles;
-    struct comp_result* results = comparisons*malloc(sizeof(struct comp_result));
-    printf("here the total files is %d\n",*fl[0].total_files); 
+    struct comp_result* results = malloc(comparisons*sizeof(struct comp_result));
+    printf("here the total files is %d\n",fl[0].total_files); 
 
     // traverse optional arguments
     for(int m = 1; m < argc; m++){ 
@@ -279,7 +279,7 @@ int main(int argc, char **argv){
         data[p].lock = &file_lock;
 	    data[p].active = &active;
         error = pthread_create(&tids[p], NULL, file_traverse, &data[p]);
-        printf("thread id %ld\n", tids[p]);
+        //printf("thread id %ld\n", tids[p]);
         if(error != 0){
             perror("pthread_create");
             abort();
@@ -307,14 +307,14 @@ int main(int argc, char **argv){
     }
 
     // start directory threads
-    for(p; p < total_threads - a_thread; p++){
+    for(; p < total_threads - a_thread; p++){
 	    data[p].filequ = &fq;
 	    data[p].dirqu = &dq;
         data[p].thread_id = p;
         data[p].filelist = &fl[0];
 	    data[p].active = &active;
         error = pthread_create(&tids[p], NULL, directory_traverse, &data[p]);
-        printf("thread id %ld\n", tids[p]);
+        //printf("thread id %ld\n", tids[p]);
         if(error != 0){
             perror("pthread_create");
             abort();
@@ -333,8 +333,8 @@ int main(int argc, char **argv){
     {
         while(ptr2 != NULL)
         {
-            results[i]->file1 = ptr1->filename;
-            results[i]->file2 = ptr2->filename;
+            results[i].file1 = ptr1->filename;
+            results[i].file2 = ptr2->filename;
             i ++;
             ptr2 = ptr2->next;
         }
@@ -344,7 +344,7 @@ int main(int argc, char **argv){
 
     int err4;
     data[p].start = 0;
-    data[p].end = perthreads;
+    data[p].end = perthread;
     for(; p < totalthreads; p ++)
     {
         data[p].thread_id = p;
@@ -357,8 +357,8 @@ int main(int argc, char **argv){
             perror("pthread_create");
             abort();
         }
-        data[p+1].start = data[p].start + perthreads;
-        data[p+1].end += data[p].end + perthreads;
+        data[p+1].start = data[p].start + perthread;
+        data[p+1].end += data[p].end + perthread;
     }
 	
     for(int m = 0; m < total_threads; m++){
