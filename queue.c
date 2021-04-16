@@ -164,7 +164,7 @@ int fil_enqueue(Queue* fq, char* name){
     return 0; 
 }
 
-int fil_dequeue(struct Queue* dq, struct Queue* fq, char* name, int* active){
+int fil_dequeue(struct Queue* dq, struct Queue* fq, char* name, int* active, int id){
     pthread_mutex_lock(&fq->lock); //Grab lock
 
     if(fq->size == 0){
