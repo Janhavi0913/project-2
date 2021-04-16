@@ -10,8 +10,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-typedef struct wordnode
-{
+typedef struct wordnode{
 	char* word;
 	int numoccur;
 	int totalnodes;
@@ -19,20 +18,35 @@ typedef struct wordnode
 	struct wordnode* next;
 } wordnode;
 
-typedef struct filenode
-{
+typedef struct filenode{
 	char* filename;
 	wordnode* head;
 	int totalnodes;
+	int* total_files;
 	struct filenode* next;
 } filenode;
 
-wordnode* createNode(char* word){ // this would have to call insert method
+typedef struct comp_result {
+    char *file1, *file2;
+    unsigned totalwords;     // word count of file 1 + file 2
+    double JSD;     // JSD between file 1 and file 2
+}comp_result;
+
+comp_result* Create(char* f1, char* f2, unsigned total, double JSD)
+{
+	struct comp_result* res = (struct comp_result*)malloc(sizeof(struct comp_result));
+	res->file1 = f1;
+	res->file2 = f2;
+	res->totalwords = total;
+	res->JSD = JSD;
+}
+
+wordnode* createNode(char* word){
         struct wordnode* newnode = (struct wordnode*)malloc(sizeof(struct wordnode));
         newnode->word = word;
         newnode->numoccur = 1;
         newnode->totalnodes = 1;
-	newnode->WFD = 0;
+		newnode->WFD = 0;
         newnode->next = NULL;
         return newnode;
 }
@@ -80,17 +94,17 @@ double totalcomputation(wordnode* file1, wordnode* file2, wordnode* file)
 	return JSD;
 }
 
-double createCombined(filenode* f1, filenode* f2)
+double createCombined(wordnode* f1, wordnode* f2)
 {
 	wordnode* fhead;
 	wordnode* ptr1;
 	wordnode* ptr2;
 	wordnode* fptr;
 	wordnode* prev;
-	ptr1 = f1->head->next;
-	ptr2 = f2->head;
-	fhead = createNode(f1->head->word);
-	fhead->numoccur = f1->head->numoccur;
+	ptr1 = f1->next;
+	ptr2 = f2;
+	fhead = createNode(f1->word);
+	fhead->numoccur = f1->numoccur;
 	fhead->totalnodes = f1->totalnodes + f2->totalnodes;
 	fptr = fhead;
 	while(ptr1 != NULL)
@@ -160,7 +174,15 @@ double createCombined(filenode* f1, filenode* f2)
 		fptr = fptr->next;
 	}
 
-	double result = totalcomputation(f1->head, f2->head, fhead);
+	double result = totalcomputation(f1, f2, fhead);
 	freeNodes(fhead);
 	return result;
+}
+
+int addToArray(int id, comp_result* add, filenode* file1, filenode* file2, int pos)
+{
+	double JSD = createCombined(file1->head, file2->head);
+	unsigned total = file1->totalnodes + file2->totalnodes;
+	add[pos] = Create(file1->filename, file2->filename, total, JSD);
+	return 0;
 }
