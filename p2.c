@@ -217,7 +217,7 @@ void* analysis(void *A)
                 break;
             ptr = ptr->next;
         }
-        addToArray(var->thread_id, var->results, f1, f2);
+        addToArray(i, var->results, f1, f2);
         free(file1);
         free(file2);
     }
