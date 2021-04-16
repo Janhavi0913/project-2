@@ -179,10 +179,10 @@ double createCombined(wordnode* f1, wordnode* f2)
 	return result;
 }
 
-int addToArray(int id, comp_result* add, filenode* file1, filenode* file2, int pos)
+int addToArray(int id, comp_result* add, filenode* file1, filenode* file2)
 {
 	double JSD = createCombined(file1->head, file2->head);
 	unsigned total = file1->totalnodes + file2->totalnodes;
-	add[pos] = Create(file1->filename, file2->filename, total, JSD);
+	add[id] = Create(file1->filename, file2->filename, total, JSD);
 	return 0;
 }
