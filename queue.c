@@ -62,10 +62,10 @@ return 0;
 }
 
 int dir_enqueue(Queue* q, char* name, int id){
-    printf("[%d] in dir_enqueue function\n",id);
-    printf("[%d] is waiting for the lock...\n",id);
+    //printf("[%d] in dir_enqueue function\n",id);
+    //printf("[%d] is waiting for the lock...\n",id);
     pthread_mutex_lock(&q->lock);
-    printf("[%d] Grabbed lock. Size of queue is %d\n",id,q->size);
+    //printf("[%d] Grabbed lock. Size of queue is %d\n",id,q->size);
     if(q->open == 0){ // the queue has been closed
         pthread_mutex_unlock(&q->lock);
         return -1;
@@ -84,19 +84,19 @@ int dir_enqueue(Queue* q, char* name, int id){
     
     pthread_cond_signal(&q->read_ready);
     pthread_mutex_unlock(&q->lock); // now we're done
-    printf("[%d] Unlocked\n",id);
+    //printf("[%d] Unlocked\n",id);
     return 0;
 }
 
 int dir_dequeue(Queue* dq, struct Queue* fq, char** name, int* active, int id){
-    printf("[%d] in dir_dequeue function\n",id);
-    printf("[%d] is waiting for the lock...\n",id);
+    //printf("[%d] in dir_dequeue function\n",id);
+    //printf("[%d] is waiting for the lock...\n",id);
     pthread_mutex_lock(&dq->lock); //Grab lock
-    printf("[%d] Grabbed lock. Size of queue is %d\n",id,dq->size);
+    //printf("[%d] Grabbed lock. Size of queue is %d\n",id,dq->size);
     if(dq->size == 0){
-        printf("[%d] Size of queue is 0!\n",id);
+        //printf("[%d] Size of queue is 0!\n",id);
         *active = *active -1;
-        printf("[%d] Active thread count is now %d\n",id,*active);
+        //printf("[%d] Active thread count is now %d\n",id,*active);
         if(*active == 0){ 
             pthread_cond_broadcast(&dq->write_ready); //wake up all threads
             pthread_cond_broadcast(&dq->read_ready);
@@ -114,7 +114,8 @@ int dir_dequeue(Queue* dq, struct Queue* fq, char** name, int* active, int id){
         }
         
     *active = *active + 1;
-    printf("[%d] queue size is %d. Active thread is now this %d\n", id, dq->size,*active);  }
+    //printf("[%d] queue size is %d. Active thread is now this %d\n", id, dq->size,*active);  
+    }
     struct Qentry* pop = dq->front;
     dq->front = dq->front->next;
     dq->size--;
@@ -126,13 +127,13 @@ int dir_dequeue(Queue* dq, struct Queue* fq, char** name, int* active, int id){
     char* name2 = (char*) malloc(length * sizeof(char));
     strcpy(name2, pop->pathname);
     *name = name2;
-    printf("[%d] Name of popped file is %s\n",id,name2);
+    //printf("[%d] Name of popped file is %s\n",id,name2);
     free(pop->pathname);
     free(pop);
 
     pthread_cond_signal(&dq->write_ready);
     pthread_mutex_unlock(&dq->lock);
-    printf("[%d] Unlocked lock. Size of queue is %d\n",id,dq->size);
+    //printf("[%d] Unlocked lock. Size of queue is %d\n",id,dq->size);
     return 0;
 }
 
@@ -164,18 +165,23 @@ int fil_enqueue(Queue* fq, char* name){
     return 0; 
 }
 
-int fil_dequeue(struct Queue* dq, struct Queue* fq, char* name, int* active, int id){
+int fil_dequeue(struct Queue* dq, struct Queue* fq, char** name, int* active, int id){
+    printf("FQ[%d] in fil_dequeue function\n",id);
+    printf("FQ[%d] is waiting for the lock...\n",id);
     pthread_mutex_lock(&fq->lock); //Grab lock
+    printf("FQ[%d] has grabbed the lock...\n",id);
 
     if(fq->size == 0){
+        printf("FQ[%d] Size of queue is 0 relasing lock!\n",id);
         while(isEmpty(fq) && *active != 0){
             pthread_cond_wait(&fq->read_ready, &fq->lock);
         }
-        if(*active == 0){
+
+        if(*active == 0 && isEmpty(fq)){
             pthread_mutex_unlock(&fq->lock); 
             return -1;
         }
-    *active++;
+    printf("FQ[%d] queue size is %d. Active thread is now this %d\n", id, dq->size,*active);
     }
 
     struct Qentry* pop = fq->front;
@@ -186,12 +192,15 @@ int fil_dequeue(struct Queue* dq, struct Queue* fq, char* name, int* active, int
         fq->rear = NULL;
 
     int length = strlen(pop->pathname) +1;
-    name = (char*) malloc(length * sizeof(char));
-    strcpy(name, pop->pathname);
+    char* name2 = (char*) malloc(length * sizeof(char));
+    strcpy(name2, pop->pathname);
+    *name = name2;
+    printf("FQ[%d] Name of popped file is %s\n",id,name2);
     free(pop->pathname);
     free(pop);
 
     pthread_cond_signal(&dq->write_ready);
     pthread_mutex_unlock(&fq->lock);
+    printf("FQ[%d] Unlocked lock. Size of queue is %d\n",id,dq->size);
     return 0;
 }

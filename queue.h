@@ -21,5 +21,6 @@ void close_queue(struct Queue* q);
 int isEmpty(struct Queue* q);
 int dir_enqueue(Queue* q, char* name, int id);
 int dir_dequeue(struct Queue* dq, struct Queue* fq, char** name, int* active, int id);
+
 int fil_enqueue(Queue* q, char* name);
-int fil_dequeue(struct Queue* dq, struct Queue* fq, char* name, int* active);
+int fil_dequeue(struct Queue* dq, struct Queue* fq, char** name, int* active, int id);
