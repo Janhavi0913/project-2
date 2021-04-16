@@ -238,7 +238,7 @@ int main(int argc, char **argv){
     struct variables *data;
     pthread_t *tids;
     pthread_mutex_t file_lock;
-	int numfiles = data[0].fl->total_files[0];
+	int numfiles = data[0].filelist->total_files[0];
     int comparisons = numfiles*(numfiles-1)/2;
     int perthread = comparisons/numfiles;
     struct comp_result* results = malloc(comparisons*sizeof(struct comp_result));
