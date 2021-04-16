@@ -4,7 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
-#include "strbuf.c"
+//#include "strbuf.c"
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -33,7 +33,11 @@ double totalcomputation(wordnode* file1, wordnode* file2, wordnode* file)
 	{
 		while(strcmp(file1->word, ptr->word) != 0)
 			ptr = ptr->next;
-		KLD1 += (file1->numoccur*log2((file1->numoccur)/(ptr->numoccur)));
+		printf("****************************\n");
+		printf("Total Words in File: %f Word: %s Frequency: %d Mean Word Frequency: %f\n",file1->WFD,file1->word,file1->numoccur,ptr->WFD);
+		KLD1 += (file1->WFD*log2((file1->WFD)/(ptr->WFD))); // need to fix how we get mean WFD
+		printf("KLD1 IS %f\n",KLD1);
+		printf("****************************\n");
 		ptr = ptr->next;
 		file1 = file1->next;
 	}
@@ -47,22 +51,38 @@ double totalcomputation(wordnode* file1, wordnode* file2, wordnode* file)
 		file2 = file2->next;
 	}
 	JSD = sqrt((0.5*KLD1)+(0.5*KLD2));
+	printf("TOTALCOMPUTATION RESULT IS %f\n",KLD2);
 	return JSD;
 }
 
 double createCombined(wordnode* f1, wordnode* f2)
 {
+	printf("The word count for file 1 here is %d\n",f1->totalnodes);
+	printf("The word count for file 2 here is %d\n",f2->totalnodes);
 	wordnode* fhead;
 	wordnode* ptr1;
 	wordnode* ptr2;
 	wordnode* fptr;
 	wordnode* prev;
-	ptr1 = f1->next;
-	ptr2 = f2;
+
+	if(f1 != NULL && f1->next != NULL){
+		ptr1 = f1->next;
+	}
+	if(f2 != NULL){
+		ptr2 = f2;
+	}
+	
+	printf("CREATING NODE WITH HEAD AS %s\n",f1->word);
 	fhead = createNode(f1->word);
+	printf("FINISHED CREATING NODE WITH HEAD AS %s\n",fhead->word);
 	fhead->numoccur = f1->numoccur;
+	printf("The total words for f1 here is %d\n",f1->totalnodes);
+	printf("The total words for f2 here is %d\n",f2->totalnodes);
 	fhead->totalnodes = f1->totalnodes + f2->totalnodes;
+	printf("COMBINED TOTAL OF WORDS IS %d\n", fhead->totalnodes);
+
 	fptr = fhead;
+	
 	while(ptr1 != NULL)
 	{
 		fptr->next = createNode(ptr1->word);
@@ -70,6 +90,7 @@ double createCombined(wordnode* f1, wordnode* f2)
 		fptr = fptr->next;
 		ptr1 = ptr1->next;
 	}
+
 	fptr->next = NULL;
 	fptr = fhead;
 	while(ptr2 != NULL)
@@ -109,7 +130,7 @@ double createCombined(wordnode* f1, wordnode* f2)
 				fhead = thenode;
 			}
 			else
-				prev->next = thenode;
+			prev->next = thenode;
 			fptr = thenode;
 			ptr2 = ptr2->next;
 		}
@@ -124,9 +145,11 @@ double createCombined(wordnode* f1, wordnode* f2)
 		}
 	}
 	fptr = fhead;
+
 	while(fptr != NULL)
 	{
-		fptr->WFD = (double)fptr->numoccur/(double)fhead->totalnodes;
+		fptr->WFD = (double)fptr->WFD/(double)fhead->totalnodes; // this is not the correct MEAN WFD formula
+		printf("total words is %d\n",fhead->totalnodes);
 		fptr = fptr->next;
 	}
 
@@ -137,8 +160,13 @@ double createCombined(wordnode* f1, wordnode* f2)
 
 int addToArray(int id, comp_result* add, filenode* file1, filenode* file2)
 {
+	printf("in addto Array method printing before JSD %d\n",file1->head->totalnodes);
 	double JSD = createCombined(file1->head, file2->head);
+	printf("BEFORE assign total\n");
 	unsigned total = file1->totalnodes + file2->totalnodes;
+	printf("AFTER assign total\n");
 	add[id] = Create(file1->filename, file2->filename, total, JSD);
+	printf("THE JSD IS %f, THE FIRST FILENAME IS %s THE SECOND FILENAME IS %s\n",JSD,file1->filename,file2->filename);
+	printf("AFTER CREATING COMP RESULT\n");
 	return 0;
 }

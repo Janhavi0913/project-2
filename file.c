@@ -48,7 +48,7 @@ wordnode* createNode(char* word){
 }
 
 wordnode* insert(wordnode* head, char* word){
-	printf("made it inside the insert. the word is %s\n", word);
+	//printf("made it inside the insert. the word is %s\n", word);
 	if(head == NULL){
 		wordnode* thenode  = createNode(word);
 		head = thenode;
@@ -133,16 +133,16 @@ strbuf_t readFile(int fd){
 		printf("the letter is %c\n", a[0]);
 		rval = read(fd, a, sizeof(char));
 	}
-	printf("this is what is in file %s\n",file.data);
+	//printf("this is what is in file %s\n",file.data);
 	close(fd);
 	free(a);
 	return file;
 }
 
 int addToFileList(filenode *fl, char* fname, wordnode *wl, int id, pthread_mutex_t *l){
-    printf("[%d] FILE Thread waiting for lock in add \n",id);
+    //printf("[%d] FILE Thread waiting for lock in add \n",id);
 	pthread_mutex_lock(l); // only one thread add to list at a time
-	printf("[%d]Grabbed the lock\n", id);
+	//("[%d]Grabbed the lock\n", id);
 
     struct filenode* add = (struct filenode*)malloc(sizeof(struct filenode));
 	add->filename = fname;
@@ -151,18 +151,18 @@ int addToFileList(filenode *fl, char* fname, wordnode *wl, int id, pthread_mutex
 	//add->total_files = fl->total_files + 1;
 	add->next = NULL;
 	add->total_files = fl->total_files;
-	printf("[%d] has made a new node \n",id);
+	//printf("[%d] has made a new node \n",id);
 	
-	printf("this is what is fl filename %d\n", *fl->total_files);
+	//printf("this is what is fl filename %d\n", *fl->total_files);
 
 	if(*fl->total_files == 0){
-		printf("[%d] adding to front\n", id);
+		//printf("[%d] adding to front\n", id);
 		*fl = *add;
 		++(*fl->total_files);
-		printf("[%d] Has added to front %d\n",id, *fl->total_files);
+		//printf("[%d] Has added to front %d\n",id, *fl->total_files);
 	}
 	else{
-		printf("[%d] total files was not 0 adding to end %d\n",id, *fl->total_files);
+		//printf("[%d] total files was not 0 adding to end %d\n",id, *fl->total_files);
 		filenode *ptr = fl;
 		filenode *prev;
 		while(ptr != NULL){
@@ -171,14 +171,14 @@ int addToFileList(filenode *fl, char* fname, wordnode *wl, int id, pthread_mutex
 		}
 		prev->next = add;
 		++(*fl->total_files);
-		printf("[%d] total files is now %d\n",id, *fl->total_files);
+		//printf("[%d] total files is now %d\n",id, *fl->total_files);
 	}
 
-    printf("[%d] FT Name of the file is %s\n", id,fl->filename);
+    //printf("[%d] FT Name of the file is %s\n", id,fl->filename);
 
-    printf("[%d] FILE Thread is going to released the lock in add \n",id);
+    //printf("[%d] FILE Thread is going to released the lock in add \n",id);
 	pthread_mutex_unlock(l); // now we're done
-    printf("[%d] FILE Thread has released the lock in add \n",id);
+    //printf("[%d] FILE Thread has released the lock in add \n",id);
 	return 0;
 }
 

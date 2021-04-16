@@ -10,6 +10,7 @@
 #include "strbuf.c"
 #include "queue.c"
 #include "file.c"
+#include "analysis.c"
 
 struct variables{
     struct Queue* filequ;
@@ -198,28 +199,44 @@ void* file_traverse(void *A){
 void* analysis(void *A)
 {
     struct variables *var = (struct variables *)A;
+    printf("file 1 is %s\n",var->results[0].file1);
+    printf("file 2 is %s\n",var->results[0].file2);
     printf("[%d] Analysis Thread\n",var->thread_id);
     int i;
-    for(i = var->start; i < var->end; i ++)
+    printf("the value of var start: %d and var end %d\n", var->start, var->end);
+    for(i = var->start; i < var->end; i++)
     {
         char *file1, *file2;
-	    file1 = var->results[var->thread_id].file1;
-	    file2 = var->results[var->thread_id].file2;
-        filenode* f1, *f2;
+	    file1 = var->results[i].file1;
+        printf("file 1 is %s\n",var->results[i].file1);
+	    file2 = var->results[i].file2;
+        printf("file 2 is %s\n",var->results[i].file2);
+        filenode* f1 = NULL;
+        filenode* f2 = NULL;
         filenode* ptr = var->filelist;
-        while(ptr != NULL)
-        {
+        if(f1 == NULL){
+            printf("F1 IS NULL\n");
+        } else {
+            printf("F1 IS NOT NULL\n");
+        }
+
+        while(ptr != NULL){
             if(strcmp(ptr->filename, file1) == 0)
                 f1 = ptr;
             else if(strcmp(ptr->filename, file2) == 0)
                 f2 = ptr;
-            if(f1 != NULL && f2 != NULL)
+            if(f1 != NULL && f2 != NULL){
                 break;
+            }
             ptr = ptr->next;
         }
+
+        printf("FINISHED FINDING FILES\n");
+         printf("file 1 is %s\n",f1->filename);
+        printf("file 2 is %s\n",f2->filename);
         addToArray(i, var->results, f1, f2);
-        free(file1);
-        free(file2);
+        printf("in analysis method printing after add to array\n");
+   
     }
 }
 
@@ -236,13 +253,11 @@ int main(int argc, char **argv){
     int file_count = 0;
     fl[0].total_files = &file_count;
     struct variables *data;
+    
     pthread_t *tids;
     pthread_mutex_t file_lock;
-	int numfiles = data[0].filelist->total_files[0];
-    int comparisons = numfiles*(numfiles-1)/2;
-    int perthread = comparisons/numfiles;
-    struct comp_result* results = malloc(comparisons*sizeof(struct comp_result));
-    printf("here the total files is %d\n",fl[0].total_files); 
+    printf("should make it here\n");
+	
 
     // traverse optional arguments
     for(int m = 1; m < argc; m++){ 
@@ -322,30 +337,67 @@ int main(int argc, char **argv){
     }
     printf("main is continue\n");
 
-    // TODO: start analysis threads phase 2 [JSD]
-
-	
-	filelist *ptr1, *ptr2;
-    ptr1 = data[p].filelist;
-    ptr2 = data[p].filelist->next;
-    int i = 0;
-    while(ptr1 != NULL)
-    {
-        while(ptr2 != NULL)
-        {
-            results[i].file1 = ptr1->filename;
-            results[i].file2 = ptr2->filename;
-            i ++;
-            ptr2 = ptr2->next;
-        }
-        ptr1 = ptr1->next;
-        ptr2 = ptr1->next;
+    int w;
+    for(w = 0; w < (total_threads - a_thread); w++){
+        pthread_join(tids[w], NULL);
     }
 
+    // TODO: start analysis threads phase 2 [JSD]
+    //data[0].filelist->total_files = fl->total_files;
+    int numfiles = *data[0].filelist->total_files;
+    //printf("the value of numfiles: %d\n", numfiles);
+    //printf("error here\n");
+    int comparisons = (numfiles*(numfiles-1))/2;
+    //printf("the value of comparisons: %d\n", comparisons);
+    int perthread = 1; //comparisons/numfiles;
+    //printf("the value of perthreads: %d\n", perthread);
+    struct comp_result* results = malloc(comparisons*sizeof(struct comp_result));
+    //printf("here the total files is %d\n", *fl[0].total_files); 
+
+    filenode** head = &fl;
+	filenode *ptr1; 
+    filenode *ptr2;
+    ptr1 = fl; //data[p].filelist;
+    ptr2 = fl->next; // data[p].filelist->next;
+    printf("Pointer to head is %s\n", (*head)->filename);
+    printf("before the while loop in main\n");
+    int i = 0;
+    printf("[0]Contents in fl Name of file is %s\n", fl->filename);
+    printf("[0]Contents in fl Name of file is %s\n", fl->next->filename);
+    printf("Name of file is %s\n", ptr1->filename);
+    printf("Name of file is second file %s\n", ptr2->filename);
+   while(ptr2 != NULL){
+    printf("start loop\n");
+        while(ptr2 != NULL){
+            results[i].file1 = ptr1->filename;
+            results[i].file2 = ptr2->filename;
+            printf("looping\n");
+            i++;
+            ptr2 = ptr2->next;
+        }
+    ptr1 = ptr1->next;
+    ptr2 = ptr1->next;
+    }
+   // fl = head;
+   printf("FINISHED LOOP\n");
+    printf("Pointer to head is %s\n", (*head)->filename);
+
+    printf("[0]Contents in fl Name of file is %s\n", fl->filename);
+    printf("[0]Contents in fl Name of file is %s\n", fl->next->filename);
+    printf("Name of file is %s\n", ptr1->filename);
+    if(ptr2 == NULL){
+        printf("PTR 2 POINTS TO NOTHING\n");
+    }
+    
+    
+
+
+
+     printf("RUNNIG THREADS \n");
     int err4;
     data[p].start = 0;
     data[p].end = perthread;
-    for(; p < totalthreads; p ++)
+    for(; p < total_threads; p ++)
     {
         data[p].thread_id = p;
         data[p].filelist = &fl[0];
@@ -361,14 +413,15 @@ int main(int argc, char **argv){
         data[p+1].end += data[p].end + perthread;
     }
 	
-    for(int m = 0; m < total_threads; m++){
-        pthread_join(tids[m], NULL);
+    for(; w < total_threads; w++){
+        pthread_join(tids[w], NULL);
     }
     printf("threads are done\n");
 	
-	for (i = 0; i < comparisons; ++i) {
-        printf("%d %s %s\n", results[i].JSD, results[i].file1, results[i].file2);
-    }
+        printf("%s\n",results[0].file1);
+    
+
+/*
 
     //data[0].filelist = data[0].filelist->next;
     //printf("[0]Name of file is %s this is the total files %d\n", data[0].filelist->filename, *data[0].filelist->total_files);
@@ -376,7 +429,7 @@ int main(int argc, char **argv){
     //printf("[1]Name of file is %s this is the total files %d\n", data[0].filelist->next->filename, *data[0].filelist->next->total_files);
     //printf("[1]Name of file is %s\n", data[0].filelist->next->next->filename);
     //printf("Name of file is %s\n", data[1].filelist->filename);
-    printLinkedlist(data[0].filelist->head);
+    //printLinkedlist(data[0].filelist->head);
     freeFileNodes(data[0].filelist);
     free(results);
     destroy_lock(data->dirqu);
@@ -385,4 +438,5 @@ int main(int argc, char **argv){
     free(tids);
 
     return EXIT_SUCCESS;
+    */
 }
