@@ -10,22 +10,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-typedef struct wordnode{
-	char* word;
-	int numoccur;
-	int totalnodes;
-	double WFD;
-	struct wordnode* next;
-} wordnode;
-
-typedef struct filenode{
-	char* filename;
-	wordnode* head;
-	int totalnodes;
-	int* total_files;
-	struct filenode* next;
-} filenode;
-
 typedef struct comp_result {
     char *file1, *file2;
     unsigned totalwords;     // word count of file 1 + file 2
@@ -39,34 +23,6 @@ comp_result* Create(char* f1, char* f2, unsigned total, double JSD)
 	res->file2 = f2;
 	res->totalwords = total;
 	res->JSD = JSD;
-}
-
-wordnode* createNode(char* word){
-        struct wordnode* newnode = (struct wordnode*)malloc(sizeof(struct wordnode));
-        newnode->word = word;
-        newnode->numoccur = 1;
-        newnode->totalnodes = 1;
-		newnode->WFD = 0;
-        newnode->next = NULL;
-        return newnode;
-}
-
-void freeNodes(wordnode* head)
-{
-    if(head != NULL)
-        return;
-    freeNodes(head->next);
-    free(head);
-}
-
-void printLinkedlist(wordnode* head)
-{
-	wordnode* ptr = head;
-    while(ptr != NULL)
-    {
-        printf("%s\n", ptr->word);
-        ptr = ptr->next;
-    }
 }
 
 double totalcomputation(wordnode* file1, wordnode* file2, wordnode* file)
