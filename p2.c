@@ -206,7 +206,7 @@ void* analysis(void *A)
 	    file1 = var->results[var->thread_id].file1;
 	    file2 = var->results[var->thread_id].file2;
         filenode* f1, *f2;
-        filenode* ptr = var->filelist.head;
+        filenode* ptr = var->filelist;
         while(ptr != NULL)
         {
             if(strcmp(ptr->filename, file1) == 0)
