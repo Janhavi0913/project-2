@@ -203,6 +203,8 @@ void* analysis(void *A)
     for(i = var->start; i < var->end; i ++)
     {
         char *file1, *file2;
+	    file1 = var->results[var->thread_id].file1;
+	    file2 = var->results[var->thread_id].file2;
         filenode* f1, *f2;
         filenode* ptr = var->filelist.head;
         while(ptr != NULL)
