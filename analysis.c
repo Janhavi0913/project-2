@@ -23,6 +23,7 @@ comp_result Create(char* f1, char* f2, unsigned total, double JSD)
 	res->file2 = f2;
 	res->totalwords = total;
 	res->JSD = JSD;
+	return res[0];
 }
 
 double totalcomputation(wordnode* file1, wordnode* file2, wordnode* file)
@@ -42,17 +43,23 @@ double totalcomputation(wordnode* file1, wordnode* file2, wordnode* file)
 		file1 = file1->next;
 	}
 	wordnode* ptr2 = file;
+
 	while(ptr2 != NULL)
-	{
+	{			
 		while(strcmp(file2->word, ptr2->word) != 0)
-			ptr2 = ptr2->next;
-		KLD2 += (file2->numoccur*log2((file2->numoccur)/(ptr2->numoccur)));
+		ptr2 = ptr2->next;
+		printf("****************************\n");
+		printf("Total Words in File: %f Word: %s Frequency: %d Mean Word Frequency: %f\n",file2->WFD,file2->word,file2->numoccur,ptr2->WFD);
+		KLD2 += (file2->WFD*log2((file2->WFD)/(ptr2->WFD))); // need to fix how we get mean WFD
+		printf("KLD2 IS %f\n",KLD2);
+		printf("****************************\n");
 		ptr2 = ptr2->next;
 		file2 = file2->next;
 	}
 	JSD = sqrt((0.5*KLD1)+(0.5*KLD2));
-	printf("TOTALCOMPUTATION RESULT IS %f\n",KLD2);
-	return JSD;
+	printf("TOTAL COMPUTATION RESULT IS %f\n",JSD);
+	//RETURN JSD WHEN KLD IS FIXED TODO!!!!!
+	return 0;
 }
 
 double createCombined(wordnode* f1, wordnode* f2)
@@ -154,17 +161,21 @@ double createCombined(wordnode* f1, wordnode* f2)
 	}
 
 	double result = totalcomputation(f1, f2, fhead);
-	freeNodes(fhead);
+	freeWordNodes(fhead);
 	return result;
 }
 
 int addToArray(int id, comp_result* add, filenode* file1, filenode* file2)
 {
+	printf("this is file1 name in addtoarray %s\n", add[0].file1);
+    printf("this is file2 name in addtoarray %s\n", add[0].file2);
 	printf("in addto Array method printing before JSD %d\n",file1->head->totalnodes);
 	double JSD = createCombined(file1->head, file2->head);
 	printf("BEFORE assign total\n");
 	unsigned total = file1->totalnodes + file2->totalnodes;
 	printf("AFTER assign total\n");
+	printf("@@this is file1: %s and file2: %s\n", file1->filename, file2->filename);
+	printf("what is id %d\n",id);
 	add[id] = Create(file1->filename, file2->filename, total, JSD);
 	printf("THE JSD IS %f, THE FIRST FILENAME IS %s THE SECOND FILENAME IS %s\n",JSD,file1->filename,file2->filename);
 	printf("AFTER CREATING COMP RESULT\n");

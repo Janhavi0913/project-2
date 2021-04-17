@@ -166,13 +166,13 @@ int fil_enqueue(Queue* fq, char* name){
 }
 
 int fil_dequeue(struct Queue* dq, struct Queue* fq, char** name, int* active, int id){
-    printf("FQ[%d] in fil_dequeue function\n",id);
-    printf("FQ[%d] is waiting for the lock...\n",id);
+   // printf("FQ[%d] in fil_dequeue function\n",id);
+    //printf("FQ[%d] is waiting for the lock...\n",id);
     pthread_mutex_lock(&fq->lock); //Grab lock
-    printf("FQ[%d] has grabbed the lock...\n",id);
+    //printf("FQ[%d] has grabbed the lock...\n",id);
 
     if(fq->size == 0){
-        printf("FQ[%d] Size of queue is 0 relasing lock!\n",id);
+        //printf("FQ[%d] Size of queue is 0 relasing lock!\n",id);
         while(isEmpty(fq) && *active != 0){
             pthread_cond_wait(&fq->read_ready, &fq->lock);
         }
@@ -181,7 +181,7 @@ int fil_dequeue(struct Queue* dq, struct Queue* fq, char** name, int* active, in
             pthread_mutex_unlock(&fq->lock); 
             return -1;
         }
-    printf("FQ[%d] queue size is %d. Active thread is now this %d\n", id, dq->size,*active);
+    //printf("FQ[%d] queue size is %d. Active thread is now this %d\n", id, dq->size,*active);
     }
 
     struct Qentry* pop = fq->front;
@@ -195,12 +195,12 @@ int fil_dequeue(struct Queue* dq, struct Queue* fq, char** name, int* active, in
     char* name2 = (char*) malloc(length * sizeof(char));
     strcpy(name2, pop->pathname);
     *name = name2;
-    printf("FQ[%d] Name of popped file is %s\n",id,name2);
+    //printf("FQ[%d] Name of popped file is %s\n",id,name2);
     free(pop->pathname);
     free(pop);
 
     pthread_cond_signal(&dq->write_ready);
     pthread_mutex_unlock(&fq->lock);
-    printf("FQ[%d] Unlocked lock. Size of queue is %d\n",id,dq->size);
+    //printf("FQ[%d] Unlocked lock. Size of queue is %d\n",id,dq->size);
     return 0;
 }

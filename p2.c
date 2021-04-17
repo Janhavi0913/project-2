@@ -92,20 +92,14 @@ void destroy_lock(Queue* dq){
     pthread_cond_destroy(&dq->read_ready);
     pthread_cond_destroy(&dq->write_ready); 
 }
-void freeFileNodes(filenode* head){
-    if(head != NULL)
-        return;
-    freeFileNodes(head->next);
-    freeNodes(head->head);
-    free(head);
-}
+
 void* directory_traverse(void *A){
     while(1){
     struct variables *var = A;
     char* curdir = NULL;
     int proceed = dir_dequeue(var->dirqu, var->filequ, &curdir, var->active, var->thread_id);
 	if(proceed != 0){ // no work is needed to be done exit the function and join all threads
-        printf("[%d]DIR Exiting...\n",var->thread_id);
+        //printf("[%d]DIR Exiting...\n",var->thread_id);
         pthread_exit(NULL);
 	}
    
@@ -146,15 +140,15 @@ void* directory_traverse(void *A){
 
 void* file_traverse(void *A){
 	struct variables *var = (struct variables *)A;
-    printf("[%d] FILE Thread the fl count we are seeing is %d\n",var->thread_id,*var->filelist->total_files);
+    //printf("[%d] FILE Thread the fl count we are seeing is %d\n",var->thread_id,*var->filelist->total_files);
 	while((var->active != 0) || (isEmpty(var->filequ) == 0)){
 		char *curfile = NULL;
 		int proceed = fil_dequeue(var->dirqu, var->filequ, &curfile, var->active, var->thread_id);
 		if(proceed != 0){
-            printf("[%d]FILE Exiting...\n",var->thread_id);
+            //printf("[%d]FILE Exiting...\n",var->thread_id);
 			pthread_exit(NULL);
 		}
-        printf("[%d]] FILE Processing file %s\n",var->thread_id,curfile);
+       // printf("[%d]] FILE Processing file %s\n",var->thread_id,curfile);
 		int fd = open(curfile, O_RDONLY);
 			if(fd == -1){
                 perror(curfile);
@@ -167,7 +161,7 @@ void* file_traverse(void *A){
 		char delim[2] = " ";
 		char* str;
         str = strtok(file.data, delim);
-        printf("the word is %s\n ", str);
+       // printf("the word is %s\n ", str);
 		wordnode* head = insert(NULL, str);
         
 		i += strlen(str);
@@ -189,7 +183,7 @@ void* file_traverse(void *A){
 			ptr->WFD = (double)ptr->numoccur/(double)head->totalnodes;
 			ptr = ptr->next;
 		}
-        printf(" After pointer look this is the word in head is %s\n", head->word);
+        //printf(" After pointer look this is the word in head is %s\n", head->word);
 		addToFileList(var->filelist, curfile, head, var->thread_id, var->lock); // this will call createfilenode
         sb_destroy(&file);
 		//freeNodes(head);
@@ -231,13 +225,33 @@ void* analysis(void *A)
             ptr = ptr->next;
         }
 
-        printf("FINISHED FINDING FILES\n");
+        //printf("FINISHED FINDING FILES\n");
          printf("file 1 is %s\n",f1->filename);
         printf("file 2 is %s\n",f2->filename);
         addToArray(i, var->results, f1, f2);
+        printf("file 1 is %s\n",f1->filename);
+        printf("file 2 is %s\n",f2->filename);
         printf("in analysis method printing after add to array\n");
    
     }
+    printf("this is file1 name before exit%s\n", var->results[0].file1);
+    printf("this is file2 name before exit%s\n", var->results[0].file2);
+    printf("[%d] Analysis threads is exiting\n", var->thread_id);
+     printf("%s\n", var->results[0].file2);
+    printf("this is file1 name before exit%s\n", var->results[0].file1);
+    printf("this is file2 name before exit%s\n", var->results[0].file2);
+   
+}
+
+int compare(const void *s1, const void *s2)
+{
+  struct comp_result *c1 = (struct comp_result *)s1;
+  struct comp_result *c2 = (struct comp_result *)s2;
+  int wordCount = c1->totalwords > c2->totalwords;
+  if (wordCount >= 0)  /* same gender so sort by id */
+    return wordCount;
+  else
+    return -wordCount;  /* the minus puts "male" first as in the question */
 }
 
 int main(int argc, char **argv){
@@ -256,7 +270,7 @@ int main(int argc, char **argv){
     
     pthread_t *tids;
     pthread_mutex_t file_lock;
-    printf("should make it here\n");
+    //printf("should make it here\n");
 	
 
     // traverse optional arguments
@@ -274,7 +288,7 @@ int main(int argc, char **argv){
         }
         free(input);
     }
-    printf("these are values of for dthread:%d for fthread:%d for a_thread:%d suffix:%s\n", d_thread, f_thread, a_thread, suf);
+    //printf("these are values of for dthread:%d for fthread:%d for a_thread:%d suffix:%s\n", d_thread, f_thread, a_thread, suf);
 
     int total_threads = f_thread + d_thread + a_thread;
     createFQueue(&fq,"1000");
@@ -335,12 +349,13 @@ int main(int argc, char **argv){
             abort();
         }
     }
-    printf("main is continue\n");
+    //printf("main is continue\n");
 
     int w;
     for(w = 0; w < (total_threads - a_thread); w++){
         pthread_join(tids[w], NULL);
     }
+
 
     // TODO: start analysis threads phase 2 [JSD]
     //data[0].filelist->total_files = fl->total_files;
@@ -353,6 +368,7 @@ int main(int argc, char **argv){
     //printf("the value of perthreads: %d\n", perthread);
     struct comp_result* results = malloc(comparisons*sizeof(struct comp_result));
     //printf("here the total files is %d\n", *fl[0].total_files); 
+
 
     filenode** head = &fl;
 	filenode *ptr1; 
@@ -380,6 +396,7 @@ int main(int argc, char **argv){
     }
    // fl = head;
    printf("FINISHED LOOP\n");
+   printf("%s\n", results[0].file2);
     printf("Pointer to head is %s\n", (*head)->filename);
 
     printf("[0]Contents in fl Name of file is %s\n", fl->filename);
@@ -417,8 +434,25 @@ int main(int argc, char **argv){
         pthread_join(tids[w], NULL);
     }
     printf("threads are done\n");
-	
-        printf("%s\n",results[0].file1);
+    
+    //printf("%f, %s, %s\n",results[0].JSD,results[0].file1,results[0].file2);
+    
+    qsort(results,comparisons,sizeof(comp_result),compare);
+
+    for(int x =0; x<comparisons; x++){
+        printf("%f %s %s\n",results[x].JSD,results[x].file1,results[x].file2);
+    }
+
+    //printf("File name is %s\n",fl->next->next->filename);
+    freeFileNodes(fl);
+    free(results);
+    //free(suf);
+    //free(results);
+    destroy_lock(data->dirqu);
+    destroy_lock(data->filequ);
+    free(data);
+    free(tids);
+
     
 
 /*

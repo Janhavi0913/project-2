@@ -130,7 +130,7 @@ strbuf_t readFile(int fd){
 		else{
 			sb_append(&file, ' ');
 		}
-		printf("the letter is %c\n", a[0]);
+		//printf("the letter is %c\n", a[0]);
 		rval = read(fd, a, sizeof(char));
 	}
 	//printf("this is what is in file %s\n",file.data);
@@ -154,11 +154,12 @@ int addToFileList(filenode *fl, char* fname, wordnode *wl, int id, pthread_mutex
 	//printf("[%d] has made a new node \n",id);
 	
 	//printf("this is what is fl filename %d\n", *fl->total_files);
-
+	
 	if(*fl->total_files == 0){
 		//printf("[%d] adding to front\n", id);
 		*fl = *add;
 		++(*fl->total_files);
+		
 		//printf("[%d] Has added to front %d\n",id, *fl->total_files);
 	}
 	else{
@@ -190,9 +191,24 @@ void printLinkedlist(wordnode* head){
     }
 }
 
-void freeNodes(wordnode* head){
-    if(head != NULL)
-        return;
-    freeNodes(head->next);
-    free(head);
+void freeWordNodes(wordnode* head){
+
+	wordnode* tmp;
+	while(head != NULL){
+		tmp = head;
+		head = head->next;
+		free(tmp->word);
+		//free(tmp->numoccur);
+		free(tmp);
+	}
+}
+void freeFileNodes(filenode* head){
+	filenode* tmp;
+	while(head != NULL){
+		tmp = head;
+		head = head->next;
+		freeWordNodes(tmp->head);
+		free(tmp->filename);
+		free(tmp);
+	}
 }
