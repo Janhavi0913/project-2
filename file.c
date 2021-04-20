@@ -121,15 +121,11 @@ strbuf_t readFile(int fd){
 	sb_init(&file, 5);
 	while(rval == 1){
 		curr = tolower(a[0]);
-		if(ispunct(a[0]) == 0 && isspace(a[0]) == 0){
+		if(isalpha(a[0]) != 0 || isdigit(a[0]) != 0 || a[0] == '-' || a[0] == ' '){
 			sb_append(&file, curr);
 		}
-		else if(a[0] == '-' && a[0] == ' '){
-			sb_append(&file, curr);
-		}
-		else{
+		if(isspace(a[0]) != 0)
 			sb_append(&file, ' ');
-		}
 		//printf("the letter is %c\n", a[0]);
 		rval = read(fd, a, sizeof(char));
 	}
